@@ -240,17 +240,91 @@ function stamp(res: Response, now: () => Date): Response {
 }
 
 /**
- * The Cache API keyed by URL. workerd wants a Request rather than the string one
- * -- a bare string reaches it as something with no `.href` and the call fails --
- * so the key becomes a GET Request here, which is also the only method
- * `cache.put` accepts.
+ * held is this isolate's own copy of what it has produced.
+ *
+ * The Cache API is the durable layer and this is not a substitute for it: it
+ * dies with the isolate and is not shared with any other. What it is, is the
+ * layer that cannot decline a write. The Cache API can, for reasons a Worker
+ * cannot see or test for -- an entry it will not hold, a key it will not accept,
+ * a datacenter that has not got it -- and when it does, EVERY request pays the
+ * full four-source ingest again. That is the difference between a 7 ms answer
+ * and an 8 second one, per request, forever, with nothing in the logs.
+ *
+ * So the memo is not an optimization on top of a working cache. It is what
+ * makes the service's speed a property of code we control rather than of a
+ * cache's undocumented acceptance rules.
+ */
+const held = new Map<string, { bytes: ArrayBuffer; headers: Headers }>();
+
+/**
+ * How many answers the memo holds. The database is one; the rest are list
+ * responses, one per distinct filter, and a filter is anything a caller can put
+ * in a query string. Without a cap that is an isolate-filling budget handed to
+ * whoever is asking, so the oldest entry goes when a new one arrives.
+ */
+const MEMO_MAX_ENTRIES = 8;
+
+function memoize(key: string, entry: { bytes: ArrayBuffer; headers: Headers }): void {
+	held.delete(key);
+	held.set(key, entry);
+	while (held.size > MEMO_MAX_ENTRIES) {
+		const oldest = held.keys().next();
+		if (oldest.done) break;
+		held.delete(oldest.value);
+	}
+}
+
+/** Only for tests, which need each case to start from a cold isolate. */
+export function forgetHeld(): void {
+	held.clear();
+}
+
+/**
+ * The Cache API keyed by URL, with this isolate's memo in front of it.
+ *
+ * workerd wants a Request rather than the string one -- a bare string reaches it
+ * as something with no `.href` and the call fails -- so the key becomes a GET
+ * Request here, which is also the only method `cache.put` accepts.
+ *
+ * A miss falls through to the Cache API and, on a hit there, is memoized: an
+ * isolate that starts cold still pays only one round trip rather than one per
+ * request.
  */
 function defaultStore(): SWRStore {
 	const cache = caches.default;
 	return {
-		match: (key) => cache.match(new Request(key, { method: "GET" })),
-		put: (key, response) => cache.put(new Request(key, { method: "GET" }), response),
+		async match(key) {
+			const memo = held.get(key);
+			if (memo) return new Response(memo.bytes, { headers: memo.headers });
+
+			const stored = await cache.match(new Request(key, { method: "GET" }));
+			if (!stored) return undefined;
+			const headers = new Headers(stored.headers);
+			const bytes = await stored.arrayBuffer();
+			if (memoizable(key)) memoize(key, { bytes, headers });
+			return new Response(bytes, { headers });
+		},
+		async put(key, response) {
+			const headers = new Headers(response.headers);
+			const bytes = await response.arrayBuffer();
+			if (memoizable(key)) memoize(key, { bytes, headers });
+			await cache.put(new Request(key, { method: "GET" }), new Response(bytes, { headers }));
+		},
 	};
+}
+
+/**
+ * memoizable keeps this service's OWN answers in the isolate and leaves the
+ * upstream documents to the Cache API.
+ *
+ * The four sources total about 22 MB and are read once, during a rebuild. The
+ * database is 20 MB and is read by every route, on every request. Holding both
+ * would put 42 MB in a 128 MB isolate to speed up the half that nobody waits
+ * on; holding the answers alone is what the memo is for.
+ */
+function memoizable(key: string): boolean {
+	const name = decodeURIComponent(key.slice(key.lastIndexOf("/") + 1));
+	return !name.startsWith("http");
 }
 
 /** A Map-backed store, for tests and for a build with no Cache API around. */

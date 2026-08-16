@@ -1,6 +1,24 @@
 name = "modelinfo"
 main = "src/index.ts"
-compatibility_date = "2026-08-01"
+compatibility_date = "2026-08-16"
+
+# Workers Caching, which is what actually makes a repeat request fast.
+#
+# Without it every request RUNS this Worker, and running it means the ingest:
+# four upstreams, ~17k records, a SQLite build. Measured against the live
+# deployment that is 5.2 to 7.5 seconds PER REQUEST, with `cf-cache-status`
+# absent from the response entirely -- the tell that nothing sits in front of
+# the Worker at all. On a hit the Worker never runs, so the answer comes back
+# without touching an upstream.
+#
+# The Cache API this service also uses is a different mechanism and not a
+# substitute: it caches the WORK (the sources, the database) for the runs that
+# do happen. This caches the ANSWER.
+#
+# The responses already carry `public, max-age=3600, stale-while-revalidate=3600`,
+# which is the entire rest of the configuration surface.
+[cache]
+enabled = true
 
 # The merge folds ~17k source records into ~12k models. That is well past the
 # 50ms a Worker gets by default, and it happens at most once per hour per colo

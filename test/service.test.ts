@@ -264,3 +264,29 @@ test("the service answers when the cache keeps nothing", async () => {
 	const bytes = new Uint8Array(await db.arrayBuffer());
 	assert.equal(new TextDecoder().decode(bytes.slice(0, 15)), "SQLite format 3");
 });
+
+/**
+ * Workers Caching is what makes a repeat request fast, and its entire
+ * configuration surface on this side is the Cache-Control header. A route that
+ * loses it stops being cached, silently, and the only symptom is that the
+ * service is slow again -- which is how it spent an afternoon answering every
+ * request in 5 to 7 seconds.
+ *
+ * /health is deliberately excluded: a monitor asking whether the upstreams are
+ * answering must not be told what they were answering an hour ago.
+ */
+test("every served answer is cacheable for the TTL", async () => {
+	const h = await harness();
+
+	for (const path of ["/v1/models", "/v1/models/claude-opus-5", "/db"]) {
+		const res = await get(h, path);
+		assert.equal(res.status, 200, path);
+		const control = res.headers.get("cache-control") ?? "";
+		assert.match(control, /public/, path);
+		assert.match(control, /max-age=3600/, path);
+		assert.match(control, /stale-while-revalidate=3600/, path);
+	}
+
+	const health = await get(h, "/health");
+	assert.equal(health.headers.get("cache-control"), "no-store", "health is never cached");
+});

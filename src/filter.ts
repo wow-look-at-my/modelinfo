@@ -95,31 +95,6 @@ export function modeOf(model: Model): string {
 	return "unknown";
 }
 
-export interface Filtered {
-	models: Model[];
-	/** How many records the filter removed, so an empty answer is explicable. */
-	excluded: number;
-}
-
-export function applyFilter(models: Model[], filter: Filter): Filtered {
-	const providers = new Set(filter.providers);
-	const modes = new Set(filter.modes);
-	const out: Model[] = [];
-
-	for (const model of models) {
-		if (modes.size && !modes.has(modeOf(model))) continue;
-		if (providers.size && !providers.has(lower(String(model.owned_by ?? "")))) continue;
-		if (filter.query) {
-			const hit =
-				lower(model.id).includes(filter.query) ||
-				model.aliases.some((a) => lower(a).includes(filter.query));
-			if (!hit) continue;
-		}
-		out.push(model);
-	}
-	return { models: out, excluded: models.length - out.length };
-}
-
 /** canonicalQuery is the cache key for a filter: same filter, same bytes. */
 export function canonicalQuery(filter: Filter): string {
 	const parts = [

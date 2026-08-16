@@ -1,78 +1,73 @@
-import type { SourceRecords } from "./merge.ts";
-
+/**
+ * The four upstreams, and the order they win ties in.
+ *
+ * PRECEDENCE. The lowest priority owns a field; a later source fills gaps and
+ * never overwrites. So this list is a ruling, not a convenience:
+ *
+ *   0 openrouter          a live marketplace, and the only source publishing
+ *                         cache-write rates per model alongside the parameters a
+ *                         model actually accepts today.
+ *   1 bifrost-datasheet   the litellm table plus `provider` and `base_model`.
+ *   2 bifrost-parameters  the same table again, plus each model's parameter
+ *                         schema; it lists about 2.5x more keys than the
+ *                         datasheet.
+ *   3 litellm             upstream of the two above, and the fallback when
+ *                         either has not picked a change up yet.
+ */
 export interface Source {
 	name: string;
 	url: string;
-	/** Turns one source document into flat model-key -> record. */
-	parse(body: unknown): SourceRecords;
-}
-
-/**
- * A document that will not parse into records is an ERROR, never an empty
- * result. An upstream serving an error page and an upstream with nothing to say
- * are different facts, and reporting both as "no models" makes a broken URL look
- * like a quiet day.
- */
-function fail(name: string, saw: unknown): never {
-	throw new Error(
-		`${name}: the document is not the shape this source publishes (saw ${describe(saw)})`,
-	);
-}
-
-function describe(v: unknown): string {
-	if (v === null) return "null";
-	if (Array.isArray(v)) return `array of ${v.length}`;
-	if (typeof v === "object") return `object with ${Object.keys(v as object).length} keys`;
-	return typeof v;
-}
-
-/** keyedObject is the shape three of the four sources share: model id -> record. */
-function keyedObject(name: string, body: unknown, skip: Set<string>): SourceRecords {
-	if (!body || typeof body !== "object" || Array.isArray(body)) fail(name, body);
-	const records = new Map<string, Record<string, unknown>>();
-	for (const [key, value] of Object.entries(body as Record<string, unknown>)) {
-		if (skip.has(key)) continue;
-		if (!value || typeof value !== "object" || Array.isArray(value)) continue;
-		records.set(key, value as Record<string, unknown>);
-	}
-	if (records.size === 0) fail(name, body);
-	return { name, records };
+	/** Lower wins a field. Stored on every row, so the fold needs no lookup table. */
+	priority: number;
+	/**
+	 * The member holding an array of records, for a document that is not itself
+	 * keyed by model. Empty means the top-level object's keys ARE the model keys.
+	 */
+	envelope: string;
+	/** The field carrying the id, for an enveloped document. */
+	idField: string;
+	/** Top-level keys that are not models. */
+	skip: string[];
 }
 
 export const SOURCES: Source[] = [
 	{
 		name: "openrouter",
 		url: "https://openrouter.ai/api/v1/models",
-		parse(body) {
-			const data = (body as { data?: unknown })?.data;
-			if (!Array.isArray(data) || data.length === 0) fail("openrouter", body);
-			const records = new Map<string, Record<string, unknown>>();
-			for (const entry of data) {
-				const id = (entry as { id?: unknown })?.id;
-				if (typeof id === "string" && id) {
-					records.set(id, entry as Record<string, unknown>);
-				}
-			}
-			if (records.size === 0) fail("openrouter", body);
-			return { name: "openrouter", records };
-		},
+		priority: 0,
+		envelope: "data",
+		idField: "id",
+		skip: [],
 	},
 	{
 		name: "bifrost-datasheet",
 		url: "https://getbifrost.ai/datasheet",
-		parse: (body) => keyedObject("bifrost-datasheet", body, new Set()),
+		priority: 1,
+		envelope: "",
+		idField: "",
+		skip: [],
 	},
 	{
 		name: "bifrost-parameters",
 		url: "https://getbifrost.ai/datasheet/model-parameters",
-		parse: (body) => keyedObject("bifrost-parameters", body, new Set()),
+		priority: 2,
+		envelope: "",
+		idField: "",
+		skip: [],
 	},
 	{
 		name: "litellm",
-		url:
-			"https://raw.githubusercontent.com/BerriAI/litellm/refs/heads/main/model_prices_and_context_window.json",
+		url: "https://raw.githubusercontent.com/BerriAI/litellm/refs/heads/main/model_prices_and_context_window.json",
+		priority: 3,
+		envelope: "",
+		idField: "",
 		// sample_spec is litellm's documentation of its own schema, checked into
 		// the same map as if it were a model. It is not one.
-		parse: (body) => keyedObject("litellm", body, new Set(["sample_spec"])),
+		skip: ["sample_spec"],
 	},
 ];
+
+/** Merge order, by name. */
+export const SOURCE_ORDER: string[] = [...SOURCES]
+	.sort((a, b) => a.priority - b.priority)
+	.map((s) => s.name);

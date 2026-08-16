@@ -1,10 +1,14 @@
 {
 	"compilerOptions": {
 		"target": "es2022",
-		"lib": ["es2022"],
+		"lib": [
+			"es2022"
+		],
 		"module": "es2022",
 		"moduleResolution": "bundler",
-		"types": ["@cloudflare/workers-types"],
+		"types": [
+			"@cloudflare/workers-types"
+		],
 		"strict": true,
 		"noUncheckedIndexedAccess": false,
 		"noEmit": true,
@@ -13,5 +17,7 @@
 		"isolatedModules": true,
 		"forceConsistentCasingInFileNames": true
 	},
-	"include": ["src/**/*.ts", "test/**/*.ts"]
+	"include": [
+		"src/**/*.ts"
+	]
 }

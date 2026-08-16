@@ -1,35 +1,19 @@
 import type { Model } from "./types.ts";
 
 /**
- * One source's contribution: a flat map of source-key -> that source's record.
- * Every source is reduced to this before merging, so merge.ts never learns four
- * document shapes.
- */
-export interface SourceRecords {
-	name: string;
-	records: Map<string, Record<string, unknown>>;
-}
-
-/**
- * MERGE ORDER. The first source to supply a FIELD owns it; later sources fill
- * gaps and never overwrite. So this list is a precedence ruling, not a
- * convenience:
+ * One stored row: what a single source said about a single model.
  *
- *   openrouter          a live marketplace, and the only source that publishes
- *                       cache-write rates per model alongside the parameters a
- *                       model actually accepts today.
- *   bifrost-datasheet   the litellm table plus `provider` and `base_model`.
- *   bifrost-parameters  the same table again, plus each model's parameter
- *                       schema; it lists ~2.5x more keys than the datasheet.
- *   litellm             upstream of the two above, and the fallback when
- *                       either has not picked a change up yet.
+ * `doc` is the source's own bytes, verbatim, exactly as ingest sliced them out
+ * of the upstream document. It is parsed here and nowhere earlier, so a model is
+ * an object graph only for as long as it takes to write it out.
  */
-export const SOURCE_ORDER = [
-	"openrouter",
-	"bifrost-datasheet",
-	"bifrost-parameters",
-	"litellm",
-] as const;
+export interface Row {
+	joinKey: string;
+	source: string;
+	priority: number;
+	sourceKey: string;
+	doc: string;
+}
 
 /**
  * Rate fields, mapped onto the names OpenRouter uses.
@@ -103,9 +87,9 @@ export function lower(s: string): string {
 /**
  * declaredProvider is the vendor a record names, or the one its key implies.
  *
- * OpenRouter states no provider field at all -- its ids ARE `vendor/model` --
- * so the key's own first segment is the answer there, and it is the same string
- * the other sources put in `provider`.
+ * OpenRouter states no provider field at all -- its ids ARE `vendor/model` -- so
+ * the key's own first segment is the answer there, and it is the same string the
+ * other sources put in `provider`.
  */
 export function declaredProvider(key: string, record: Record<string, unknown>): string {
 	for (const field of ["provider", "litellm_provider", "owned_by"]) {
@@ -118,8 +102,8 @@ export function declaredProvider(key: string, record: Record<string, unknown>): 
 
 /**
  * joinKey is what decides two records describe the same model. It is
- * `provider/name`, where `name` is the source's key with its OWN provider
- * prefix removed -- and nothing else removed.
+ * `provider/name`, where `name` is the source's key with its OWN provider prefix
+ * removed -- and nothing else removed.
  *
  * That one rule is what merges litellm's `gpt-5.2` (litellm_provider openai)
  * with OpenRouter's `openai/gpt-5.2`, while keeping every neighbour apart:
@@ -130,8 +114,8 @@ export function declaredProvider(key: string, record: Record<string, unknown>): 
  *     `high/` is not the provider, so nothing is stripped. Nineteen priced
  *     variants share one `base_model`, which is exactly why base_model is NOT
  *     the join key -- using it would collapse them onto one wrong price.
- *   - a dated snapshot stays separate from the floating name, because no date
- *     is ever stripped. Providers price those differently often enough that
+ *   - a dated snapshot stays separate from the floating name, because no date is
+ *     ever stripped. Providers price those differently often enough that
  *     guessing is worse than two records.
  *
  * A record naming no provider joins on its bare key, which is the most this can
@@ -149,7 +133,7 @@ export function joinKey(key: string, record: Record<string, unknown>): string {
 /**
  * bareName is the short name a caller is most likely to ask by, so
  * `anthropic/claude-opus-5` also answers to `claude-opus-5`. It is registered
- * only when exactly one model claims it -- see buildIndex.
+ * only when exactly one model claims it -- see the alias table in ingest.ts.
  */
 export function bareName(key: string): string | null {
 	const cut = key.lastIndexOf("/");
@@ -161,51 +145,33 @@ export function bareName(key: string): string | null {
 const RESERVED = new Set(["id", "object", "aliases", "sources", "pricing"]);
 
 /**
- * mergeSources folds every source into one record per model.
+ * foldRecords turns everything the sources said about ONE model into one record.
  *
- * A field is written once, by the earliest source in SOURCE_ORDER that has it.
- * `pricing` is the exception: it is assembled from every source, first writer
- * per RATE, so a model OpenRouter prices for prompt and completion still picks
- * up a cache-write rate only litellm published.
- */
-export function mergeSources(sources: SourceRecords[]): Map<string, Model> {
-	const out = new Map<string, Model>();
-	for (const source of [...sources].sort((a, b) => order(a.name) - order(b.name))) {
-		mergeInto(out, source);
-	}
-	finish(out);
-	return out;
-}
-
-/**
- * mergeInto folds ONE source into an accumulator, so a caller can parse a
- * source, fold it, and drop the parsed document before parsing the next.
+ * A field is written once, by the lowest-priority source that has it. `pricing`
+ * is the exception: it is assembled from every source, first writer per RATE, so
+ * a model OpenRouter prices for prompt and completion still picks up a
+ * cache-write rate only litellm published.
  *
- * That is not a style preference. Holding all four parsed at once peaked at
- * 140 MB, and a Worker isolate is capped at 128 MB. The caller is responsible
- * for feeding sources in SOURCE_ORDER; mergeSources does it for the simple case.
+ * Rows must arrive in priority order. The query that produces them says so
+ * (`ORDER BY join_key, priority`), which is also what lets the caller fold one
+ * model at a time instead of holding the catalogue.
  */
-export function mergeInto(out: Map<string, Model>, source: SourceRecords): void {
-	for (const [rawKey, record] of source.records) {
-		const key = joinKey(rawKey, record);
-		if (!key) continue;
+export function foldRecords(rows: Row[]): Model {
+	const model: Model = {
+		id: rows[0].joinKey,
+		object: "model",
+		created: 0,
+		owned_by: "",
+		pricing: {},
+		aliases: [],
+		sources: [],
+	};
 
-		let model = out.get(key);
-		if (!model) {
-			model = {
-				id: key,
-				object: "model",
-				created: 0,
-				owned_by: declaredProvider(rawKey, record),
-				pricing: {},
-				aliases: [],
-				sources: [],
-			};
-			out.set(key, model);
-		}
-		if (!model.sources.includes(source.name)) model.sources.push(source.name);
-		if (!model.aliases.includes(rawKey)) model.aliases.push(rawKey);
-		if (!model.owned_by) model.owned_by = declaredProvider(rawKey, record);
+	for (const row of rows) {
+		const record = JSON.parse(row.doc) as Record<string, unknown>;
+		if (!model.sources.includes(row.source)) model.sources.push(row.source);
+		if (!model.aliases.includes(row.sourceKey)) model.aliases.push(row.sourceKey);
+		if (!model.owned_by) model.owned_by = declaredProvider(row.sourceKey, record);
 		if (!model.created && typeof record.created === "number") model.created = record.created;
 
 		for (const [field, value] of Object.entries(record)) {
@@ -229,71 +195,7 @@ export function mergeInto(out: Map<string, Model>, source: SourceRecords): void 
 			}
 		}
 	}
-}
 
-/** finish is the once-per-build tidy: alias order, so two builds match byte for byte. */
-export function finish(out: Map<string, Model>): void {
-	for (const model of out.values()) model.aliases.sort();
-}
-
-function order(name: string): number {
-	const at = (SOURCE_ORDER as readonly string[]).indexOf(name);
-	// A source nobody declared merges last rather than silently first.
-	return at < 0 ? SOURCE_ORDER.length : at;
-}
-
-/**
- * buildIndex maps every name a caller might use onto one canonical id.
- *
- * Three tiers, and the order between them is the whole point. A canonical id
- * always wins. A name a SOURCE actually used beats a name this service derived.
- * A name two models claim at the same tier is DROPPED, never resolved to
- * whichever came first: an ambiguous lookup that silently picks one model
- * prices a call against the wrong one, and "not found" is the honest answer.
- *
- * That tiering is what keeps `gpt-image-1.5` resolving to OpenAI's model. It is
- * a literal litellm key, so it outranks the nineteen size-and-quality variants
- * that merely share it as a derived `base_model`.
- */
-export function buildIndex(models: Map<string, Model>): Map<string, string> {
-	const index = new Map<string, string>();
-
-	const tier = (names: (model: Model, id: string) => Iterable<string>) => {
-		const taken = new Map<string, string>();
-		const ambiguous = new Set<string>();
-		for (const model of models.values()) {
-			for (const name of names(model, model.id)) {
-				const k = lower(name);
-				if (!k || index.has(k) || ambiguous.has(k)) continue;
-				const held = taken.get(k);
-				if (held === undefined) taken.set(k, model.id);
-				else if (held !== model.id) {
-					taken.delete(k);
-					ambiguous.add(k);
-				}
-			}
-		}
-		for (const [k, id] of taken) index.set(k, id);
-	};
-
-	for (const [key, model] of models) index.set(key, model.id);
-	tier((model) => model.aliases);
-	tier(function* (model) {
-		for (const field of ["canonical_slug", "base_model", "hugging_face_id"]) {
-			const v = model[field];
-			if (typeof v === "string" && v.trim()) yield v;
-		}
-		for (const alias of model.aliases) {
-			const bare = bareName(alias);
-			if (bare) yield bare;
-		}
-		const bare = bareName(model.id);
-		if (bare) yield bare;
-	});
-	return index;
-}
-
-/** sortModels orders by id, so two builds of the same data are byte-identical. */
-export function sortModels(models: Map<string, Model>): Model[] {
-	return [...models.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+	model.aliases.sort();
+	return model;
 }

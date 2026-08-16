@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { memoryStore, STAMP, swrFetch } from "../src/cache.ts";
+import { cacheKey, memoryStore, STAMP, type SWRStore, swrFetch } from "../src/cache.ts";
 
 /** A fetcher that counts calls and answers whatever body it is told to. */
 function counting(bodies: string[]): { fetcher: typeof fetch; calls: () => number } {
@@ -147,7 +147,7 @@ test("the entry is stored long past the TTL, so the stale copy is still there", 
 		store,
 	});
 
-	const held = await store.match("https://example.invalid/x");
+	const held = await store.match(cacheKey("https://example.invalid/x"));
 	assert.ok(held);
 	// Freshness is this file's arithmetic. If Cache-Control decided it, the
 	// Cache API would evict the entry at the TTL and there would be no stale
@@ -169,4 +169,82 @@ test("concurrent readers of a cold URL make ONE upstream request", async () => {
 	);
 	assert.equal(calls(), 1);
 	for (const got of all) assert.equal(got.body, '{"a":1}');
+});
+
+/**
+ * A store that accepts everything and keeps nothing: the Cache API in an
+ * environment where it does not work. It is per-datacenter, functional only on
+ * a custom domain, and a no-op in a dashboard preview -- and this is what every
+ * one of those looks like from inside the Worker.
+ */
+function forgetfulStore(): { store: SWRStore; puts: () => number } {
+	let puts = 0;
+	return {
+		store: {
+			async match() {
+				return undefined;
+			},
+			async put(_key, response) {
+				puts++;
+				await response.arrayBuffer();
+			},
+		},
+		puts: () => puts,
+	};
+}
+
+test("a cache that keeps nothing costs time, never the answer", async () => {
+	const { store, puts } = forgetfulStore();
+	const { fetcher, calls } = counting(['{"a":1}']);
+	const bg = background();
+
+	// The failure this replaces: the service wrote the bytes, could not read
+	// them back, and reported "the cache accepted <url> and then did not have
+	// it" -- with the answer already computed and in hand.
+	const got = await swrFetch("https://example.invalid/forgetful", {
+		ttlSeconds: 60,
+		waitUntil: bg.waitUntil,
+		fetcher,
+		store,
+	});
+
+	assert.equal(got.body, '{"a":1}');
+	assert.equal(got.cold, true);
+	assert.equal(puts(), 1, "it still offers the bytes to the cache");
+	assert.equal(calls(), 1);
+});
+
+test("every reader of one production gets its own readable body", async () => {
+	const { store } = forgetfulStore();
+	const { fetcher } = counting(['{"a":1}']);
+	const bg = background();
+	const opts = { ttlSeconds: 60, waitUntil: bg.waitUntil, fetcher, store };
+
+	// One deduplicated fetch, five callers. A tee would hand the body to
+	// whoever asked first and leave the rest holding a spent response.
+	const all = await Promise.all(
+		[1, 2, 3, 4, 5].map(() => swrFetch("https://example.invalid/shared", opts)),
+	);
+	for (const got of all) assert.equal(got.body, '{"a":1}');
+});
+
+test("an entry is keyed under a host this service serves", async () => {
+	const store = memoryStore();
+	const { fetcher } = counting(['{"a":1}']);
+	const bg = background();
+
+	await swrFetch("https://openrouter.ai/api/v1/models", {
+		ttlSeconds: 60,
+		waitUntil: bg.waitUntil,
+		fetcher,
+		store,
+	});
+
+	// A Worker cannot affect the cache of a zone it does not serve, and three of
+	// the four sources are foreign origins. Keyed by the upstream's own URL, the
+	// put is declined -- silently, every time.
+	assert.equal(await store.match("https://openrouter.ai/api/v1/models"), undefined);
+	const held = await store.match(cacheKey("https://openrouter.ai/api/v1/models"));
+	assert.ok(held, "stored under modelinfo's own host");
+	assert.equal(await held.text(), '{"a":1}');
 });

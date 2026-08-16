@@ -89,8 +89,7 @@ export async function swr(
 		if (ageSeconds >= opts.ttlSeconds) {
 			const refresh = once(key, () => replace(key, store, produce, now, true));
 			if (opts.blockUntilFresh) {
-				await refresh;
-				return { response: await read(store, key), ...produced(now), cold: false };
+				return { response: revive(await refresh), ...produced(now), cold: false };
 			}
 			// Behind the response, never in front of it. A failure here is
 			// swallowed on purpose: the caller already has bytes, and the next
@@ -101,38 +100,57 @@ export async function swr(
 		return { response: hit, fetchedAt, ageSeconds, stale: false, cold: false };
 	}
 
-	await once(key, () => replace(key, store, produce, now, false));
-	return { response: await read(store, key), ...produced(now), cold: true };
+	const made = await once(key, () => replace(key, store, produce, now, false));
+	return { response: revive(made), ...produced(now), cold: true };
 }
 
 function produced(now: () => Date): { fetchedAt: Date; ageSeconds: number; stale: boolean } {
 	return { fetchedAt: now(), ageSeconds: 0, stale: false };
 }
 
-/** replace produces the bytes and stores them. It does not hand them back. */
+/**
+ * Bytes that were just produced, held so the request that paid for them does not
+ * have to ask the cache for them back.
+ */
+interface Made {
+	bytes: ArrayBuffer;
+	headers: Headers;
+}
+
+/**
+ * replace produces the bytes, offers them to the store, and HANDS THEM BACK.
+ *
+ * Handing them back is the whole point. This used to write and then read the
+ * same key, which made a cache write the service could not proceed without --
+ * and the Cache API makes no such promise: it is per-datacenter, functional only
+ * on a custom domain, and a no-op in a dashboard preview. So a put that did not
+ * stick failed every request, with the answer already computed and in hand. A
+ * cache is an optimization; losing one costs time, never correctness.
+ *
+ * The bytes are buffered rather than teed, because a tee hands one body to
+ * whoever asked first and leaves every other caller of the same deduplicated
+ * production holding a response that is already spent.
+ */
 async function replace(
 	key: string,
 	store: SWRStore,
 	produce: (background: boolean) => Promise<Response>,
 	now: () => Date,
 	background: boolean,
-): Promise<void> {
-	await store.put(key, stamp(await produce(background), now));
+): Promise<Made> {
+	const stamped = stamp(await produce(background), now);
+	const headers = new Headers(stamped.headers);
+	const bytes = await stamped.arrayBuffer();
+	// One ArrayBuffer, several Responses: constructing a Response from a buffer
+	// copies it into the body rather than taking the buffer over, so the same
+	// bytes back both the stored entry and every revive() below.
+	await store.put(key, new Response(bytes, { headers }));
+	return { bytes, headers };
 }
 
-/**
- * read takes the bytes back OUT of the store rather than teeing them on the way
- * in, so every caller of one deduplicated production gets its own readable body.
- * A tee hands one body to whoever asked first and leaves everyone else holding a
- * response that is already spent.
- *
- * A store that accepted bytes and then does not have them is reported, not
- * worked around: it means the cache declined an entry this service is built on.
- */
-async function read(store: SWRStore, key: string): Promise<Response> {
-	const stored = await store.match(key);
-	if (!stored) throw new Error(`the cache accepted ${key} and then did not have it`);
-	return stored;
+/** revive builds a readable Response over bytes this request already holds. */
+function revive(made: Made): Response {
+	return new Response(made.bytes, { headers: made.headers });
 }
 
 export interface FetchOptions extends SWROptions {
@@ -145,10 +163,26 @@ export interface CachedBody extends Omit<Cached, "response"> {
 	body: string;
 }
 
+/**
+ * cacheKey puts an entry under a URL THIS service serves.
+ *
+ * The Cache API is the Worker's own store, and a Worker cannot affect the cache
+ * of a zone it does not serve -- three of the four sources are foreign origins,
+ * two of them behind Cloudflare themselves. Keying an entry by the upstream's
+ * own URL therefore asks the cache to hold something on another zone's behalf,
+ * which it declines, silently, every time.
+ *
+ * The path carries a version so a schema change is never answered out of the
+ * previous shape's bytes.
+ */
+export function cacheKey(name: string): string {
+	return `https://modelinfo.pazer.ai/__cache/v1/${encodeURIComponent(name)}`;
+}
+
 /** swrFetch is swr over an upstream document, handed back as text to parse. */
 export async function swrFetch(url: string, opts: FetchOptions): Promise<CachedBody> {
 	const doFetch = opts.fetcher ?? fetch;
-	const { response, ...rest } = await swr(url, () => upstream(url, doFetch), opts);
+	const { response, ...rest } = await swr(cacheKey(url), () => upstream(url, doFetch), opts);
 	return { ...rest, body: await response.text() };
 }
 

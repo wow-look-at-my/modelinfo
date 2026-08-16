@@ -205,11 +205,17 @@ function stamp(res: Response, now: () => Date): Response {
 	return new Response(res.body, { headers });
 }
 
+/**
+ * The Cache API keyed by URL. workerd wants a Request rather than the string one
+ * -- a bare string reaches it as something with no `.href` and the call fails --
+ * so the key becomes a GET Request here, which is also the only method
+ * `cache.put` accepts.
+ */
 function defaultStore(): SWRStore {
 	const cache = caches.default;
 	return {
-		match: (key) => cache.match(key),
-		put: (key, response) => cache.put(key, response),
+		match: (key) => cache.match(new Request(key, { method: "GET" })),
+		put: (key, response) => cache.put(new Request(key, { method: "GET" }), response),
 	};
 }
 

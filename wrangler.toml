@@ -16,3 +16,10 @@ enabled = true
 [[routes]]
 pattern = "modelinfo.pazer.ai"
 custom_domain = true
+
+# The hourly rebuild. It warms whichever colo the schedule lands in; every other
+# colo warms itself on its first request, and both go through the same cache.
+# Minute 7 rather than 0: the upstreams do not need four services asking them
+# for everything on the hour.
+[triggers]
+crons = ["7 * * * *"]

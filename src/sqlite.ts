@@ -80,21 +80,69 @@ export function loadSqlite(factory: SqlJsFactory, wasm: WasmSource): Promise<Sql
 	return loading;
 }
 
+/**
+ * sql.js's emscripten glue decides what kind of environment it is in, and gets
+ * a Cloudflare Worker wrong:
+ *
+ *   ba = !!globalThis.WorkerGlobalScope     // "this is a Web Worker"
+ *   ba && (scriptDirectory = self.location.href)
+ *
+ * workerd defines WorkerGlobalScope and has no `location`, so that read throws
+ * "Cannot read properties of undefined (reading 'href')" the moment the factory
+ * runs. The value it is computing is where to fetch the .wasm from, which this
+ * service never needs: the module is compiled into the bundle and handed over
+ * through instantiateWasm.
+ *
+ * So the flag is hidden for exactly as long as the factory takes to run. That is
+ * not a lie told to save a lookup -- a Cloudflare Worker genuinely is not a Web
+ * Worker, and the paths this turns off (importScripts, a script-relative fetch
+ * for the .wasm) are the ones that do not exist here. It is restored
+ * immediately, because it is a real global other code may read.
+ *
+ * A runtime shim for the sibling branch is not an option: esbuild folds
+ * `typeof __filename != "undefined" ? ... : ...` at bundle time and the first
+ * arm is gone before the Worker starts. The real fix is upstream in sql.js,
+ * where that expression should test for `self.location` rather than for a
+ * web-shaped environment.
+ */
+async function withoutWorkerGlobalScope<T>(work: () => Promise<T>): Promise<T> {
+	// An OWN property, shadowing whatever the name resolves to. workerd puts
+	// WorkerGlobalScope on the global's prototype, not on the global itself, so
+	// reading an own descriptor finds nothing and `delete` reports success and
+	// changes nothing -- the two obvious ways to do this both quietly do nothing
+	// at all. Shadowing is what the environment check actually reads.
+	const own = Object.getOwnPropertyDescriptor(globalThis, "WorkerGlobalScope");
+	Object.defineProperty(globalThis, "WorkerGlobalScope", {
+		value: undefined,
+		writable: true,
+		enumerable: false,
+		configurable: true,
+	});
+	try {
+		return await work();
+	} finally {
+		if (own) Object.defineProperty(globalThis, "WorkerGlobalScope", own);
+		else delete (globalThis as Record<string, unknown>).WorkerGlobalScope;
+	}
+}
+
 function start(factory: SqlJsFactory, wasm: WasmSource): Promise<Sqlite> {
-	if (wasm.binary) return factory({ wasmBinary: wasm.binary });
+	if (wasm.binary) return withoutWorkerGlobalScope(() => factory({ wasmBinary: wasm.binary }));
 	const module = wasm.module;
 	if (!module) throw new Error("loadSqlite needs either a compiled module or the wasm bytes");
-	return factory({
-		// Emscripten's hook: build the instance ourselves, hand it back through
-		// the callback, and return an empty exports object to say we did.
-		instantiateWasm(
-			imports: WebAssembly.Imports,
-			ready: (instance: WebAssembly.Instance) => void,
-		): Record<string, unknown> {
-			ready(new WebAssembly.Instance(module, imports));
-			return {};
-		},
-	});
+	return withoutWorkerGlobalScope(() =>
+		factory({
+			// Emscripten's hook: build the instance ourselves, hand it back through
+			// the callback, and return an empty exports object to say we did.
+			instantiateWasm(
+				imports: WebAssembly.Imports,
+				ready: (instance: WebAssembly.Instance) => void,
+			): Record<string, unknown> {
+				ready(new WebAssembly.Instance(module, imports));
+				return {};
+			},
+		}),
+	);
 }
 
 /** Only for tests, which need each case to start from a cold isolate. */

@@ -10,10 +10,10 @@
 		"deploy": "wrangler deploy"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20250109.0",
+		"@cloudflare/workers-types": "^5.20260816.1",
 		"@types/node": "^22.20.1",
 		"typescript": "^5.7.3",
-		"wrangler": "^3.101.0"
+		"wrangler": "^4.123.0"
 	},
 	"dependencies": {
 		"sql.js": "^1.14.2"

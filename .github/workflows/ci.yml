@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # Verification runs on EVERY branch with no gate. Its whole purpose is to fail
+  # before a merge, and a check that only runs on master fails after the event
+  # it exists to prevent.
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Proves the Worker BUNDLES: the .wasm import, the CommonJS interop and
+      # the size limit are all things only the bundler can tell us about.
+      - run: npx wrangler deploy --dry-run --outdir dist
+
+  # The deploy IS gated, because its destination is one mutable target. Every
+  # branch publishing to modelinfo.pazer.ai would be branches overwriting each
+  # other, which is the case a branch gate is actually for.
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Cloudflare credentials by OIDC. Nothing is stored as an Actions secret;
+      # entitlement is decided server-side, and an unentitled identity gets
+      # 200 and {} rather than an error.
+      - uses: wow-look-at-my/actions@secret-server#latest
+      - name: Deploy the Worker
+        uses: wow-look-at-my/actions@typescript#latest
+        with:
+          script: |
+            const token = process.env.CLOUDFLARE_API_TOKEN ?? '';
+            const account = process.env.CLOUDFLARE_ACCOUNT_ID ?? '';
+            if (!token || !account) {
+              core.setFailed(
+                'modelinfo was not deployed: secret-server did not provide ' +
+                  'CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID for this workflow ' +
+                  'identity. Store both at https://secrets.pazer.io and entitle this ' +
+                  'repository, then re-run. This step fails rather than skipping, ' +
+                  'because a green run that deployed nothing reads as a deploy.',
+              );
+              return;
+            }
+            await $`npx wrangler deploy`;
+            core.info('deployed to modelinfo.pazer.ai');

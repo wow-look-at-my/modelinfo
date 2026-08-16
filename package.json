@@ -1,0 +1,21 @@
+{
+	"name": "modelinfo",
+	"private": true,
+	"type": "module",
+	"description": "One merged model catalogue, served in the OpenAI /v1/models shape",
+	"scripts": {
+		"test": "node --test \"test/*.test.ts\"",
+		"typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^5.20260816.1",
+		"@types/node": "^22.20.1",
+		"typescript": "^5.7.3",
+		"wrangler": "^4.123.0"
+	},
+	"dependencies": {
+		"sql.js": "^1.14.2"
+	}
+}

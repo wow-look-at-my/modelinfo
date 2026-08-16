@@ -232,3 +232,35 @@ test("an unrouted path lists the routes that exist", async () => {
 	const body = (await res.json()) as { routes: string[] };
 	assert.ok(body.routes.includes("/db"));
 });
+
+/**
+ * The live failure this replaces: on a deployment where the Cache API keeps
+ * nothing, every route answered
+ * `{"error":"every source failed, so there is no catalogue to serve: ...
+ * (the cache accepted <url> and then did not have it)"}` -- four upstreams
+ * fetched successfully, and the service reporting them all as failures because
+ * it could not read its own write back.
+ */
+test("the service answers when the cache keeps nothing", async () => {
+	const h = await harness({
+		store: {
+			async match() {
+				return undefined;
+			},
+			async put(_key, response) {
+				await response.arrayBuffer();
+			},
+		},
+	});
+
+	const body = await listOf(h, "/v1/models");
+	assert.ok(body.data.length > 0, "a catalogue, not an error");
+
+	const one = await get(h, "/v1/models/claude-opus-5");
+	assert.equal(one.status, 200);
+
+	const db = await get(h, "/db");
+	assert.equal(db.status, 200);
+	const bytes = new Uint8Array(await db.arrayBuffer());
+	assert.equal(new TextDecoder().decode(bytes.slice(0, 15)), "SQLite format 3");
+});

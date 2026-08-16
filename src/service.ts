@@ -1,4 +1,4 @@
-import { swr, type SWRStore } from "./cache.ts";
+import { cacheKey, swr, type SWRStore } from "./cache.ts";
 import { Catalogue } from "./catalogue.ts";
 import { canonicalQuery, modeOf, parseFilter } from "./filter.ts";
 import { ingest, TTL_SECONDS } from "./ingest.ts";
@@ -23,14 +23,15 @@ export interface Service {
 /**
  * Cache keys. The Cache API wants URLs; nobody fetches these.
  *
- * They carry a version, so a schema change is never answered out of the previous
- * shape's bytes. They are CONSTANT rather than derived from the request, because
- * the hourly cron has no request to derive one from -- keying on the incoming
- * origin would have the schedule warm an entry no request ever reads.
+ * cacheKey puts them under a host this service serves, which is what the Cache
+ * API will hold an entry for. They are CONSTANT rather than derived from the
+ * request, because the hourly cron has no request to derive one from -- keying
+ * on the incoming origin would have the schedule warm an entry no request ever
+ * reads.
  */
 const KEYS = {
-	database: "https://modelinfo.internal/v1/models.sqlite",
-	list: "https://modelinfo.internal/v1/models",
+	database: cacheKey("models.sqlite"),
+	list: cacheKey("models"),
 };
 
 export async function handle(request: Request, svc: Service): Promise<Response> {

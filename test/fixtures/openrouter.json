@@ -1,0 +1,495 @@
+{
+	"object": "list",
+	"data": [
+		{
+			"id": "google/gemini-3.7-flash",
+			"canonical_slug": "google/gemini-3.7-flash-20260813",
+			"hugging_face_id": null,
+			"name": "Google: Gemini 3.7 Flash",
+			"created": 1786640581,
+			"description": "Gemini 3.7 Flash is a multimodal model from Google for fast agentic workflows, coding, and complex multi-step reasoning. It is designed for tasks that require responsive performance and reliable multi-step...",
+			"context_length": 1048576,
+			"architecture": {
+				"modality": "text+image+file+audio+video->text",
+				"input_modalities": [
+					"text",
+					"image",
+					"video",
+					"file",
+					"audio"
+				],
+				"output_modalities": [
+					"text"
+				],
+				"tokenizer": "Gemini",
+				"instruct_type": null
+			},
+			"pricing": {
+				"prompt": "0.000000375",
+				"completion": "0.000001875",
+				"image": "0.000000375",
+				"audio": "0.000000375",
+				"input_audio_cache": "0.0000000375",
+				"web_search": "0.014",
+				"internal_reasoning": "0.000001875",
+				"input_cache_read": "0.0000000375",
+				"input_cache_write": "0.0000000208333333333333"
+			},
+			"top_provider": {
+				"context_length": 1048576,
+				"max_completion_tokens": 65536,
+				"is_moderated": false
+			},
+			"per_request_limits": null,
+			"supported_parameters": [
+				"include_reasoning",
+				"max_tokens",
+				"reasoning",
+				"reasoning_effort",
+				"response_format",
+				"seed",
+				"stop",
+				"structured_outputs",
+				"temperature",
+				"tool_choice",
+				"tools",
+				"top_p"
+			],
+			"default_parameters": {},
+			"supported_voices": null,
+			"knowledge_cutoff": null,
+			"expiration_date": null,
+			"links": {
+				"details": "/api/v1/models/google/gemini-3.7-flash-20260813/endpoints"
+			},
+			"benchmarks": {
+				"design_arena": [
+					{
+						"arena": "agents",
+						"category": "androidnative",
+						"elo": 1253,
+						"win_rate": 56.8,
+						"rank": 6
+					},
+					{
+						"arena": "models",
+						"category": "gamedev",
+						"elo": 1309,
+						"win_rate": 52.6,
+						"rank": 13
+					},
+					{
+						"arena": "models",
+						"category": "website",
+						"elo": 1347,
+						"win_rate": 59.6,
+						"rank": 2
+					}
+				],
+				"artificial_analysis": {
+					"intelligence_index": 56,
+					"coding_index": 76.1,
+					"agentic_index": 45.1
+				}
+			},
+			"reasoning": {
+				"mandatory": true,
+				"default_enabled": true,
+				"supported_efforts": [
+					"high",
+					"medium",
+					"low"
+				],
+				"default_effort": "medium"
+			}
+		},
+		{
+			"id": "anthropic/claude-opus-5",
+			"canonical_slug": "anthropic/claude-opus-5-20260723",
+			"hugging_face_id": null,
+			"name": "Claude Opus 5",
+			"created": 1784912544,
+			"description": "Claude Opus 5 is Anthropic’s flagship model for demanding reasoning, coding, and long-horizon agentic work. It is particularly strong at end-to-end software tasks, code review and bug finding, visual analysis...",
+			"context_length": 1000000,
+			"architecture": {
+				"modality": "text+image+file->text",
+				"input_modalities": [
+					"text",
+					"image",
+					"file"
+				],
+				"output_modalities": [
+					"text"
+				],
+				"tokenizer": "Claude",
+				"instruct_type": null
+			},
+			"pricing": {
+				"prompt": "0.000005",
+				"completion": "0.000025",
+				"web_search": "0.01",
+				"input_cache_read": "0.0000005",
+				"input_cache_write": "0.00000625",
+				"input_cache_write_1h": "0.00001"
+			},
+			"top_provider": {
+				"context_length": 1000000,
+				"max_completion_tokens": 128000,
+				"is_moderated": true
+			},
+			"per_request_limits": null,
+			"supported_parameters": [
+				"include_reasoning",
+				"max_completion_tokens",
+				"max_tokens",
+				"reasoning",
+				"reasoning_effort",
+				"response_format",
+				"stop",
+				"structured_outputs",
+				"temperature",
+				"tool_choice",
+				"tools",
+				"verbosity"
+			],
+			"default_parameters": {
+				"temperature": null,
+				"top_p": null,
+				"top_k": null,
+				"frequency_penalty": null,
+				"presence_penalty": null,
+				"repetition_penalty": null
+			},
+			"supported_voices": null,
+			"knowledge_cutoff": null,
+			"expiration_date": null,
+			"links": {
+				"details": "/api/v1/models/anthropic/claude-opus-5-20260723/endpoints"
+			},
+			"benchmarks": {
+				"design_arena": [
+					{
+						"arena": "agents",
+						"category": "fullstack",
+						"elo": 1352,
+						"win_rate": 69.2,
+						"rank": 3
+					},
+					{
+						"arena": "agents",
+						"category": "webapps",
+						"elo": 1282,
+						"win_rate": 56.3,
+						"rank": 5
+					},
+					{
+						"arena": "models",
+						"category": "3d",
+						"elo": 1385,
+						"win_rate": 63,
+						"rank": 3
+					},
+					{
+						"arena": "models",
+						"category": "codecategories",
+						"elo": 1347,
+						"win_rate": 59.4,
+						"rank": 2
+					},
+					{
+						"arena": "models",
+						"category": "dataviz",
+						"elo": 1372,
+						"win_rate": 61.3,
+						"rank": 2
+					},
+					{
+						"arena": "models",
+						"category": "gamedev",
+						"elo": 1385,
+						"win_rate": 62.4,
+						"rank": 2
+					},
+					{
+						"arena": "models",
+						"category": "svg",
+						"elo": 1363,
+						"win_rate": 60.2,
+						"rank": 1
+					},
+					{
+						"arena": "models",
+						"category": "uicomponent",
+						"elo": 1370,
+						"win_rate": 59.6,
+						"rank": 2
+					},
+					{
+						"arena": "models",
+						"category": "website",
+						"elo": 1328,
+						"win_rate": 58.3,
+						"rank": 3
+					}
+				],
+				"artificial_analysis": {
+					"intelligence_index": 63.1,
+					"coding_index": 78,
+					"agentic_index": 59.2
+				}
+			},
+			"reasoning": {
+				"mandatory": false,
+				"default_enabled": true,
+				"supported_efforts": [
+					"max",
+					"xhigh",
+					"high",
+					"medium",
+					"low"
+				],
+				"default_effort": "high"
+			}
+		},
+		{
+			"id": "openai/gpt-5.2",
+			"canonical_slug": "openai/gpt-5.2-20251211",
+			"hugging_face_id": "",
+			"name": "OpenAI: GPT-5.2",
+			"created": 1765389775,
+			"description": "GPT-5.2 is the latest frontier-grade model in the GPT-5 series, offering stronger agentic and long context perfomance compared to GPT-5.1. It uses adaptive reasoning to allocate computation dynamically, responding quickly...",
+			"context_length": 400000,
+			"architecture": {
+				"modality": "text+image+file->text",
+				"input_modalities": [
+					"file",
+					"image",
+					"text"
+				],
+				"output_modalities": [
+					"text"
+				],
+				"tokenizer": "GPT",
+				"instruct_type": null
+			},
+			"pricing": {
+				"prompt": "0.00000175",
+				"completion": "0.000014",
+				"web_search": "0.01",
+				"input_cache_read": "0.000000175"
+			},
+			"top_provider": {
+				"context_length": 400000,
+				"max_completion_tokens": 128000,
+				"is_moderated": true
+			},
+			"per_request_limits": null,
+			"supported_parameters": [
+				"include_reasoning",
+				"max_completion_tokens",
+				"max_tokens",
+				"reasoning",
+				"reasoning_effort",
+				"response_format",
+				"seed",
+				"structured_outputs",
+				"tool_choice",
+				"tools"
+			],
+			"default_parameters": {
+				"temperature": null,
+				"top_p": null,
+				"top_k": null,
+				"frequency_penalty": null,
+				"presence_penalty": null,
+				"repetition_penalty": null
+			},
+			"supported_voices": null,
+			"knowledge_cutoff": null,
+			"expiration_date": null,
+			"links": {
+				"details": "/api/v1/models/openai/gpt-5.2-20251211/endpoints"
+			},
+			"benchmarks": {
+				"design_arena": [
+					{
+						"arena": "models",
+						"category": "website",
+						"elo": 1206,
+						"win_rate": 54.4,
+						"rank": 48
+					},
+					{
+						"arena": "agents",
+						"category": "androidnative",
+						"elo": 1095,
+						"win_rate": 49.2,
+						"rank": 30
+					},
+					{
+						"arena": "agents",
+						"category": "fullstack",
+						"elo": 1079,
+						"win_rate": 44.1,
+						"rank": 32
+					},
+					{
+						"arena": "agents",
+						"category": "godotgamedev",
+						"elo": 1142,
+						"win_rate": 48.1,
+						"rank": 19
+					},
+					{
+						"arena": "agents",
+						"category": "mobileapps",
+						"elo": 1147,
+						"win_rate": 46.6,
+						"rank": 28
+					},
+					{
+						"arena": "agents",
+						"category": "webapps",
+						"elo": 1116,
+						"win_rate": 43.8,
+						"rank": 29
+					},
+					{
+						"arena": "models",
+						"category": "3d",
+						"elo": 1132,
+						"win_rate": 41.5,
+						"rank": 77
+					},
+					{
+						"arena": "models",
+						"category": "codecategories",
+						"elo": 1189,
+						"win_rate": 49.5,
+						"rank": 57
+					},
+					{
+						"arena": "models",
+						"category": "dataviz",
+						"elo": 1224,
+						"win_rate": 56.1,
+						"rank": 43
+					},
+					{
+						"arena": "models",
+						"category": "gamedev",
+						"elo": 1233,
+						"win_rate": 56,
+						"rank": 41
+					},
+					{
+						"arena": "models",
+						"category": "uicomponent",
+						"elo": 1217,
+						"win_rate": 51.3,
+						"rank": 44
+					},
+					{
+						"arena": "models",
+						"category": "asciiart",
+						"elo": 1185,
+						"win_rate": 50.7,
+						"rank": 27
+					},
+					{
+						"arena": "models",
+						"category": "svg",
+						"elo": 1170,
+						"win_rate": 52.6,
+						"rank": 39
+					}
+				]
+			},
+			"reasoning": {
+				"mandatory": false,
+				"supported_efforts": [
+					"xhigh",
+					"high",
+					"medium",
+					"low",
+					"none"
+				],
+				"default_effort": "medium"
+			}
+		},
+		{
+			"id": "openrouter/auto-beta",
+			"canonical_slug": "openrouter/auto-beta",
+			"hugging_face_id": null,
+			"name": "Auto Router (Beta)",
+			"created": 1784311165,
+			"description": "Auto Router (Beta) is a task-aware router from OpenRouter. It classifies each request, then routes it the [most popular model](/rankings#task-spend) for that task based on aggregate spend, filtered by your...",
+			"context_length": 2000000,
+			"architecture": {
+				"modality": "text+image+file+audio+video->text+image",
+				"input_modalities": [
+					"text",
+					"image",
+					"audio",
+					"file",
+					"video"
+				],
+				"output_modalities": [
+					"text",
+					"image"
+				],
+				"tokenizer": "Router",
+				"instruct_type": null
+			},
+			"pricing": {
+				"prompt": "-1",
+				"completion": "-1"
+			},
+			"top_provider": {
+				"context_length": null,
+				"max_completion_tokens": null,
+				"is_moderated": false
+			},
+			"per_request_limits": null,
+			"supported_parameters": [
+				"frequency_penalty",
+				"include_reasoning",
+				"logit_bias",
+				"logprobs",
+				"max_tokens",
+				"min_p",
+				"prediction",
+				"presence_penalty",
+				"reasoning",
+				"reasoning_effort",
+				"repetition_penalty",
+				"response_format",
+				"seed",
+				"stop",
+				"structured_outputs",
+				"temperature",
+				"tool_choice",
+				"tools",
+				"top_a",
+				"top_k",
+				"top_logprobs",
+				"top_p",
+				"web_search_options"
+			],
+			"default_parameters": {
+				"temperature": null,
+				"top_p": null,
+				"top_k": null,
+				"frequency_penalty": null,
+				"presence_penalty": null,
+				"repetition_penalty": null
+			},
+			"supported_voices": null,
+			"knowledge_cutoff": null,
+			"expiration_date": null,
+			"links": {
+				"details": "/api/v1/models/openrouter/auto-beta/endpoints"
+			}
+		}
+	]
+}

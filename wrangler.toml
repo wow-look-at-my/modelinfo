@@ -1,0 +1,18 @@
+name = "modelinfo"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# The merge folds ~17k source records into ~12k models. That is well past the
+# 50ms a Worker gets by default, and it happens at most once per hour per colo
+# because everything in front of it is cached.
+[limits]
+cpu_ms = 30000
+
+[observability]
+enabled = true
+
+# The public name. `custom_domain` makes Cloudflare own the DNS record and the
+# certificate, so there is no separate route to keep in step with this file.
+[[routes]]
+pattern = "modelinfo.pazer.ai"
+custom_domain = true

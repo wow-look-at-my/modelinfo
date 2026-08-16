@@ -1,0 +1,3632 @@
+{
+	"gpt-5.2": {
+		"cache_read_input_token_cost": 1.75e-7,
+		"cache_read_input_token_cost_priority": 3.5e-7,
+		"input_cost_per_token": 0.00000175,
+		"input_cost_per_token_priority": 0.0000035,
+		"max_input_tokens": 272000,
+		"max_output_tokens": 128000,
+		"max_tokens": 128000,
+		"mode": "chat",
+		"output_cost_per_token": 0.000014,
+		"output_cost_per_token_priority": 0.000028,
+		"supported_endpoints": [
+			"/v1/chat/completions",
+			"/v1/batch",
+			"/v1/responses"
+		],
+		"supported_modalities": [
+			"text",
+			"image"
+		],
+		"supported_output_modalities": [
+			"text",
+			"image"
+		],
+		"supports_function_calling": true,
+		"supports_native_streaming": true,
+		"supports_parallel_function_calling": true,
+		"supports_pdf_input": true,
+		"supports_prompt_caching": true,
+		"supports_reasoning": true,
+		"supports_response_schema": true,
+		"supports_system_messages": true,
+		"supports_tool_choice": true,
+		"supports_service_tier": true,
+		"supports_vision": true,
+		"provider": "openai",
+		"base_model": "gpt-5.2",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"disabled": true,
+				"disabledText": "Temperature value is fixed at 1 and cannot be changed at the moment for this model."
+			},
+			{
+				"id": "max_completion_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 65536,
+				"range": {
+					"min": 1,
+					"max": 128000
+				}
+			},
+			{
+				"id": "image_detail",
+				"label": "Image Detail",
+				"helpText": "By controlling the detail parameter, you have control over how the model processes the image and generates its textual understanding. You can override this value at attachment level.",
+				"type": "select",
+				"accesorKey": "detail",
+				"default": {
+					"detail": "auto"
+				},
+				"options": [
+					{
+						"label": "Auto",
+						"value": "auto"
+					},
+					{
+						"label": "Low",
+						"value": "low"
+					},
+					{
+						"label": "High",
+						"value": "high"
+					}
+				]
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				},
+				"disabled": true,
+				"disabledText": "Top P value is fixed at 1 and cannot be changed at the moment for this model."
+			},
+			{
+				"id": "response_format",
+				"label": "Response Format",
+				"helpText": "The format of the response. If set to 'json', the response will be a JSON object with the keys 'choices' and 'logprobs'. If set to 'text', the response will be a string with the completion text. If set to 'Structured output', the response will match the supplied JSON schema.",
+				"type": "select",
+				"accesorKey": "type",
+				"default": {
+					"type": "text"
+				},
+				"options": [
+					{
+						"label": "Structured output",
+						"value": "json_schema",
+						"subFields": [
+							{
+								"id": "json_schema",
+								"label": "JSON Schema",
+								"helpText": "A JSON schema that the model will follow when generating the response.",
+								"type": "json",
+								"default": {
+									"name": "",
+									"strict": true,
+									"schema": {}
+								}
+							}
+						]
+					},
+					{
+						"label": "JSON",
+						"value": "json_object"
+					},
+					{
+						"label": "Text",
+						"value": "text"
+					}
+				]
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0,
+				"disabled": true,
+				"disabledText": "Frequency Penalty value is fixed at 0 and cannot be changed at the moment for this model."
+			},
+			{
+				"id": "reasoning_effort",
+				"label": "Reasoning Effort",
+				"helpText": "This parameter controls how many reasoning tokens the model generates before producing a response",
+				"type": "select",
+				"options": [
+					{
+						"label": "None",
+						"value": "none"
+					},
+					{
+						"label": "Minimal",
+						"value": "minimal"
+					},
+					{
+						"label": "Low",
+						"value": "low"
+					},
+					{
+						"label": "Medium",
+						"value": "medium"
+					},
+					{
+						"label": "High",
+						"value": "high"
+					}
+				]
+			},
+			{
+				"id": "reasoning_summary",
+				"label": "Reasoning Summary",
+				"helpText": "Controls the level of detail in the reasoning summary output",
+				"type": "select",
+				"options": [
+					{
+						"label": "Auto",
+						"value": "auto"
+					},
+					{
+						"label": "Concise",
+						"value": "concise"
+					},
+					{
+						"label": "Detailed",
+						"value": "detailed"
+					}
+				]
+			},
+			{
+				"id": "verbosity",
+				"label": "Verbosity",
+				"helpText": "Verbosity determines how many output tokens are generated. Lowering the number of tokens reduces overall latency.",
+				"type": "select",
+				"options": [
+					{
+						"label": "Low",
+						"value": "low"
+					},
+					{
+						"label": "Medium",
+						"value": "medium"
+					},
+					{
+						"label": "High",
+						"value": "high"
+					}
+				]
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "web_search",
+				"label": "Web Search",
+				"helpText": "Enable web search tool for real-time information retrieval.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 128000,
+				"range": {
+					"min": 1,
+					"max": 128000
+				}
+			}
+		]
+	},
+	"azure/gpt-5.2": {
+		"cache_read_input_token_cost": 1.75e-7,
+		"input_cost_per_token": 0.00000175,
+		"max_input_tokens": 272000,
+		"max_output_tokens": 128000,
+		"max_tokens": 128000,
+		"mode": "chat",
+		"output_cost_per_token": 0.000014,
+		"supported_endpoints": [
+			"/v1/chat/completions",
+			"/v1/batch",
+			"/v1/responses"
+		],
+		"supported_modalities": [
+			"text",
+			"image"
+		],
+		"supported_output_modalities": [
+			"text",
+			"image"
+		],
+		"supports_function_calling": true,
+		"supports_native_streaming": true,
+		"supports_parallel_function_calling": true,
+		"supports_pdf_input": true,
+		"supports_prompt_caching": true,
+		"supports_reasoning": true,
+		"supports_response_schema": true,
+		"supports_system_messages": true,
+		"supports_tool_choice": true,
+		"supports_vision": true,
+		"provider": "azure",
+		"base_model": "gpt-5.2",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 128000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"claude-opus-4-6": {
+		"cache_creation_input_token_cost": 0.00000625,
+		"cache_creation_input_token_cost_above_200k_tokens": 0.0000125,
+		"cache_creation_input_token_cost_above_1hr": 0.00001,
+		"cache_read_input_token_cost": 5e-7,
+		"cache_read_input_token_cost_above_200k_tokens": 0.000001,
+		"input_cost_per_token": 0.000005,
+		"input_cost_per_token_above_200k_tokens": 0.00001,
+		"max_input_tokens": 1000000,
+		"max_output_tokens": 128000,
+		"max_tokens": 128000,
+		"mode": "chat",
+		"output_cost_per_token": 0.000025,
+		"output_cost_per_token_above_200k_tokens": 0.0000375,
+		"search_context_cost_per_query": {
+			"search_context_size_high": 0.01,
+			"search_context_size_low": 0.01,
+			"search_context_size_medium": 0.01
+		},
+		"supports_assistant_prefill": false,
+		"supports_computer_use": true,
+		"supports_function_calling": true,
+		"supports_pdf_input": true,
+		"supports_prompt_caching": true,
+		"supports_reasoning": true,
+		"supports_response_schema": true,
+		"supports_tool_choice": true,
+		"supports_vision": true,
+		"tool_use_system_prompt_tokens": 346,
+		"provider": "anthropic",
+		"base_model": "claude-opus-4-6",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 128000
+				}
+			},
+			{
+				"id": "stop_sequences",
+				"label": "Stop Sequence",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		],
+		"supports_web_search": true,
+		"input_cost_per_token_fast": 0.00003,
+		"output_cost_per_token_fast": 0.00015,
+		"provider_specific_entry": {
+			"us": 1.1,
+			"fast": 6
+		},
+		"deprecation_date": "2027-02-05"
+	},
+	"anthropic/claude-opus-5": {
+		"cache_creation_input_token_cost": 0.00000625,
+		"cache_creation_input_token_cost_above_1hr": 0.00001,
+		"cache_read_input_token_cost": 5e-7,
+		"input_cost_per_token": 0.000005,
+		"max_input_tokens": 1000000,
+		"max_output_tokens": 128000,
+		"max_tokens": 128000,
+		"mode": "chat",
+		"output_cost_per_token": 0.000025,
+		"search_context_cost_per_query": {
+			"search_context_size_high": 0.01,
+			"search_context_size_low": 0.01,
+			"search_context_size_medium": 0.01
+		},
+		"supports_adaptive_thinking": true,
+		"supports_speed": true,
+		"supports_assistant_prefill": false,
+		"supports_computer_use": true,
+		"supports_function_calling": true,
+		"supports_pdf_input": true,
+		"supports_prompt_caching": true,
+		"supports_reasoning": true,
+		"supports_response_schema": true,
+		"supports_native_structured_output": true,
+		"supports_sampling_params": false,
+		"supports_tool_choice": true,
+		"supports_vision": true,
+		"supports_xhigh_reasoning_effort": true,
+		"supports_max_reasoning_effort": true,
+		"provider_specific_entry": {
+			"us": 1.1
+		},
+		"supports_output_config": true,
+		"prompt_cache_min_tokens": 512,
+		"provider": "anthropic",
+		"base_model": "claude-opus-5",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 128000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		],
+		"input_cost_per_token_fast": 0.00001,
+		"output_cost_per_token_fast": 0.00005,
+		"input_cost_per_token_batches": 0.0000025,
+		"output_cost_per_token_batches": 0.0000125,
+		"tool_use_system_prompt_tokens": 286,
+		"supports_web_search": true
+	},
+	"claude-opus-5": {
+		"cache_creation_input_token_cost": 0.00000625,
+		"cache_creation_input_token_cost_above_1hr": 0.00001,
+		"cache_read_input_token_cost": 5e-7,
+		"input_cost_per_token": 0.000005,
+		"max_input_tokens": 1000000,
+		"max_output_tokens": 128000,
+		"max_tokens": 128000,
+		"mode": "chat",
+		"output_cost_per_token": 0.000025,
+		"search_context_cost_per_query": {
+			"search_context_size_high": 0.01,
+			"search_context_size_low": 0.01,
+			"search_context_size_medium": 0.01
+		},
+		"supports_adaptive_thinking": true,
+		"supports_speed": true,
+		"supports_assistant_prefill": false,
+		"supports_computer_use": true,
+		"supports_function_calling": true,
+		"supports_pdf_input": true,
+		"supports_prompt_caching": true,
+		"supports_reasoning": true,
+		"supports_response_schema": true,
+		"supports_native_structured_output": true,
+		"supports_sampling_params": false,
+		"supports_tool_choice": true,
+		"supports_vision": true,
+		"supports_xhigh_reasoning_effort": true,
+		"supports_max_reasoning_effort": true,
+		"provider_specific_entry": {
+			"us": 1.1
+		},
+		"supports_output_config": true,
+		"prompt_cache_min_tokens": 512,
+		"provider": "anthropic",
+		"base_model": "claude-opus-5",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 128000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		],
+		"input_cost_per_token_fast": 0.00001,
+		"output_cost_per_token_fast": 0.00005,
+		"input_cost_per_token_batches": 0.0000025,
+		"output_cost_per_token_batches": 0.0000125,
+		"tool_use_system_prompt_tokens": 286,
+		"supports_web_search": true,
+		"deprecation_date": "2027-07-24"
+	},
+	"gpt-image-1.5": {
+		"cache_read_input_image_token_cost": 0.000002,
+		"cache_read_input_token_cost": 0.00000125,
+		"input_cost_per_token": 0.000005,
+		"mode": "image_generation",
+		"output_cost_per_token": 0.00001,
+		"input_cost_per_image_token": 0.000008,
+		"output_cost_per_image_token": 0.000032,
+		"supported_endpoints": [
+			"/v1/images/generations"
+		],
+		"supports_vision": true,
+		"supports_pdf_input": true,
+		"provider": "openai",
+		"base_model": "gpt-image-1.5",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"azure/gpt-image-1.5": {
+		"cache_read_input_image_token_cost": 0.000002,
+		"cache_read_input_token_cost": 0.00000125,
+		"input_cost_per_token": 0.000005,
+		"input_cost_per_image_token": 0.000008,
+		"mode": "image_generation",
+		"output_cost_per_image_token": 0.000032,
+		"supported_endpoints": [
+			"/v1/images/generations",
+			"/v1/images/edits"
+		],
+		"provider": "azure",
+		"base_model": "gpt-image-1.5",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"low/1024-x-1024/gpt-image-1.5": {
+		"input_cost_per_image": 0.009,
+		"mode": "image_generation",
+		"supported_endpoints": [
+			"/v1/images/generations",
+			"/v1/images/edits"
+		],
+		"supports_vision": true,
+		"supports_pdf_input": true,
+		"provider": "openai",
+		"base_model": "gpt-image-1.5",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"high/1024-x-1536/gpt-image-1.5": {
+		"input_cost_per_image": 0.2,
+		"mode": "image_generation",
+		"supported_endpoints": [
+			"/v1/images/generations",
+			"/v1/images/edits"
+		],
+		"supports_vision": true,
+		"supports_pdf_input": true,
+		"provider": "openai",
+		"base_model": "gpt-image-1.5",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"medium/1024-x-1024/gpt-image-1.5": {
+		"input_cost_per_image": 0.034,
+		"mode": "image_generation",
+		"supported_endpoints": [
+			"/v1/images/generations",
+			"/v1/images/edits"
+		],
+		"supports_vision": true,
+		"supports_pdf_input": true,
+		"provider": "openai",
+		"base_model": "gpt-image-1.5",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"1024-x-1024/gpt-image-1.5": {
+		"input_cost_per_image": 0.009,
+		"mode": "image_generation",
+		"supported_endpoints": [
+			"/v1/images/generations",
+			"/v1/images/edits"
+		],
+		"supports_vision": true,
+		"supports_pdf_input": true,
+		"provider": "openai",
+		"base_model": "gpt-image-1.5",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"tts-1": {
+		"input_cost_per_character": 0.000015,
+		"mode": "audio_speech",
+		"supported_endpoints": [
+			"/v1/audio/speech"
+		],
+		"provider": "openai",
+		"base_model": "tts-1",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"whisper-1": {
+		"input_cost_per_second": 0.0001,
+		"mode": "audio_transcription",
+		"output_cost_per_second": 0.0001,
+		"supported_endpoints": [
+			"/v1/audio/transcriptions"
+		],
+		"provider": "openai",
+		"base_model": "whisper-1",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"text-embedding-3-large": {
+		"input_cost_per_token": 1.3e-7,
+		"input_cost_per_token_batches": 6.5e-8,
+		"max_input_tokens": 8191,
+		"max_tokens": 8191,
+		"mode": "embedding",
+		"output_cost_per_token": 0,
+		"output_cost_per_token_batches": 0,
+		"output_vector_size": 3072,
+		"provider": "openai",
+		"base_model": "text-embedding-3-large",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 8191
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"gpt-4": {
+		"input_cost_per_token": 0.00003,
+		"max_input_tokens": 8192,
+		"max_output_tokens": 4096,
+		"max_tokens": 4096,
+		"mode": "chat",
+		"output_cost_per_token": 0.00006,
+		"supports_function_calling": true,
+		"supports_prompt_caching": true,
+		"supports_system_messages": true,
+		"supports_tool_choice": true,
+		"provider": "openai",
+		"base_model": "gpt-4",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4096,
+				"range": {
+					"min": 1,
+					"max": 4096
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": -2,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"azure/gpt-4": {
+		"input_cost_per_token": 0.00003,
+		"max_input_tokens": 8192,
+		"max_output_tokens": 4096,
+		"max_tokens": 4096,
+		"mode": "chat",
+		"output_cost_per_token": 0.00006,
+		"supports_function_calling": true,
+		"supports_tool_choice": true,
+		"provider": "azure",
+		"base_model": "gpt-4",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "maxTokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4096
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "topP",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequencyPenalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logitBias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "topLogprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presencePenalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "responseFormat",
+				"label": "Response Format",
+				"helpText": "The format of the response. If set to 'json', the response will be a JSON object with the keys 'choices' and 'logprobs'. If set to 'text', the response will be a string with the completion text.",
+				"type": "select",
+				"accesorKey": "type",
+				"default": {
+					"type": "text"
+				},
+				"options": [
+					{
+						"label": "JSON",
+						"value": "json_object"
+					},
+					{
+						"label": "Text",
+						"value": "text"
+					}
+				]
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4096,
+				"range": {
+					"min": 1,
+					"max": 4096
+				}
+			}
+		]
+	},
+	"1024-x-1024/50-steps/bedrock/amazon.nova-canvas-v1:0": {
+		"max_input_tokens": 2600,
+		"mode": "image_generation",
+		"output_cost_per_image": 0.06,
+		"provider": "bedrock",
+		"base_model": "nova-canvas",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 2600
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"azure/gpt-4o-mini-tts": {
+		"input_cost_per_token": 0.0000025,
+		"mode": "audio_speech",
+		"output_cost_per_audio_token": 0.000012,
+		"output_cost_per_second": 0.00025,
+		"output_cost_per_token": 0.00001,
+		"supported_endpoints": [
+			"/v1/audio/speech"
+		],
+		"supported_modalities": [
+			"text",
+			"audio"
+		],
+		"supported_output_modalities": [
+			"audio"
+		],
+		"provider": "azure",
+		"base_model": "gpt-4o-mini-tts",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"assemblyai/best": {
+		"input_cost_per_second": 0.00003333,
+		"mode": "audio_transcription",
+		"output_cost_per_second": 0,
+		"provider": "assemblyai",
+		"base_model": "best",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 4000,
+				"range": {
+					"min": 1,
+					"max": 4000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"amazon.nova-2-multimodal-embeddings-v1:0": {
+		"max_input_tokens": 8172,
+		"max_tokens": 8172,
+		"mode": "embedding",
+		"input_cost_per_token": 1.35e-7,
+		"input_cost_per_image": 0.00006,
+		"input_cost_per_video_per_second": 0.0007,
+		"input_cost_per_audio_per_second": 0.00014,
+		"output_cost_per_token": 0,
+		"output_vector_size": 3072,
+		"source": "https://us-east-1.console.aws.amazon.com/bedrock/home?region=us-east-1#/model-catalog/serverless/amazon.nova-2-multimodal-embeddings-v1:0",
+		"supports_embedding_image_input": true,
+		"supports_image_input": true,
+		"supports_video_input": true,
+		"supports_audio_input": true,
+		"provider": "bedrock",
+		"base_model": "nova-2-multimodal-embeddings",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 8172
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"gemini/veo-2.0-generate-001": {
+		"max_input_tokens": 1024,
+		"max_tokens": 1024,
+		"mode": "video_generation",
+		"output_cost_per_second": 0.35,
+		"source": "https://ai.google.dev/gemini-api/docs/video",
+		"supported_modalities": [
+			"text"
+		],
+		"supported_output_modalities": [
+			"video"
+		],
+		"provider": "gemini",
+		"base_model": "veo-2.0-generate",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 1024
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	},
+	"amazon.rerank-v1:0": {
+		"input_cost_per_query": 0.001,
+		"input_cost_per_token": 0,
+		"max_document_chunks_per_query": 100,
+		"max_input_tokens": 32000,
+		"max_output_tokens": 32000,
+		"max_query_tokens": 32000,
+		"max_tokens": 32000,
+		"max_tokens_per_document_chunk": 512,
+		"mode": "rerank",
+		"output_cost_per_token": 0,
+		"provider": "bedrock",
+		"base_model": "rerank",
+		"model_parameters": [
+			{
+				"id": "promptTools",
+				"label": "Prompt Tools (Functions)",
+				"helpText": "A list of tools the model may call.",
+				"type": "select"
+			},
+			{
+				"id": "temperature",
+				"label": "Temperature",
+				"helpText": "What sampling temperature to use, between 0 and 2. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "max_tokens",
+				"label": "Max Tokens",
+				"helpText": "The maximum number of tokens that can be generated in the Result.",
+				"type": "number",
+				"default": 2048,
+				"range": {
+					"min": 1,
+					"max": 32000
+				}
+			},
+			{
+				"id": "stop",
+				"label": "Stop",
+				"helpText": "Custom text sequences that will cause the model to stop generating.",
+				"type": "array",
+				"array": {
+					"type": "text",
+					"maxElements": 4,
+					"minElements": 1
+				}
+			},
+			{
+				"id": "top_p",
+				"label": "Top P",
+				"helpText": "An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 0,
+					"max": 1,
+					"step": 0.01
+				}
+			},
+			{
+				"id": "frequency_penalty",
+				"label": "Frequency Penalty",
+				"helpText": "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "logit_bias",
+				"label": "Logit Bias",
+				"helpText": "Modify the likelihood of specified tokens appearing in the completion.",
+				"type": "number",
+				"range": {
+					"min": -100,
+					"max": 100
+				}
+			},
+			{
+				"id": "logprobs",
+				"label": "Logprobs",
+				"helpText": "Whether to return log probabilities of the output tokens or not. If true, returns the log probabilities of each output token returned in the content of message.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "top_logprobs",
+				"label": "Top Logprobs",
+				"helpText": "An integer between 0 and 5 specifying the number of most likely tokens to return at each token position, each with an associated log probability.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 5,
+					"step": 1
+				}
+			},
+			{
+				"id": "n",
+				"label": "Number of Responses",
+				"helpText": "How many chat completion choices to generate for each input message.",
+				"type": "number",
+				"default": 1,
+				"range": {
+					"min": 1,
+					"max": 10,
+					"step": 1
+				}
+			},
+			{
+				"id": "presence_penalty",
+				"label": "Presence Penalty",
+				"helpText": "Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 2,
+					"step": 0.01
+				},
+				"default": 0
+			},
+			{
+				"id": "seed",
+				"label": "Seed",
+				"helpText": "(BETA) - System will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result.",
+				"type": "number",
+				"range": {
+					"min": 0,
+					"max": 100
+				}
+			},
+			{
+				"id": "stream",
+				"label": "Stream",
+				"helpText": "The stream parameter in the API controls whether the response is sent in incremental updates, like tokenized data as it's generated, or as a complete result in one go.",
+				"type": "boolean",
+				"default": false
+			},
+			{
+				"id": "metadata",
+				"label": "Metadata",
+				"helpText": "A unique identifier representing your end-user.",
+				"type": "text"
+			}
+		]
+	}
+}

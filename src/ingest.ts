@@ -3,7 +3,7 @@ import { modeOf } from "./filter.ts";
 import { bareName, foldRecords, joinKey, lower, type Row } from "./merge.ts";
 import { SCHEMA } from "./schema.ts";
 import { SOURCES, type Source } from "./sources.ts";
-import { splitTopLevel } from "./split.ts";
+import { extractLargest, splitTopLevel } from "./split.ts";
 import type { Database, Sqlite } from "./sqlite.ts";
 
 /** One hour, for the sources, the database and the answers alike. */
@@ -105,32 +105,56 @@ async function readSource(
 function insertRecords(db: Database, source: Source, body: string): number {
 	const skip = new Set(source.skip);
 	const insert = db.prepare(
-		"INSERT INTO record (join_key, source, priority, source_key, doc) VALUES (?,?,?,?,?)",
+		"INSERT INTO record (join_key, source, priority, source_key, doc, field, blob_id) VALUES (?,?,?,?,?,?,?)",
 	);
+	const putBlob = db.prepare("INSERT OR IGNORE INTO blob (json) VALUES (?)");
+	const findBlob = db.prepare("SELECT id FROM blob WHERE json = ?");
 	let n = 0;
 	db.run("BEGIN");
 	try {
 		for (const [key, raw] of splitTopLevel(body, source.envelope)) {
 			if (skip.has(key)) continue;
-			// The ONLY parse in the ingest path, and its subject is one ~2 KB
-			// record rather than an 18 MB document.
+			// The ONLY parse in the ingest path, and its subject is one ~2 KB record
+			// rather than an 18 MB document.
 			const record = JSON.parse(raw) as unknown;
 			if (!record || typeof record !== "object" || Array.isArray(record)) continue;
 			const fields = record as Record<string, unknown>;
 			const id = source.envelope ? String(fields[source.idField] ?? "") : key;
 			if (!id) continue;
-			insert.run([joinKey(id, fields), source.name, source.priority, id, raw]);
+
+			const { doc, field, value } = extractLargest(raw);
+			let blobId: number | null = null;
+			if (value !== null) {
+				putBlob.run([value]);
+				findBlob.bind([value]);
+				blobId = findBlob.step() ? Number(findBlob.get()[0]) : null;
+				findBlob.reset();
+			}
+			insert.run([
+				joinKey(id, fields),
+				source.name,
+				source.priority,
+				id,
+				blobId === null ? raw : doc,
+				blobId === null ? null : field,
+				blobId,
+			]);
 			n++;
 		}
 		if (n === 0) throw new Error(`${source.name}: the document held no models`);
 		db.run("COMMIT");
 	} catch (err) {
 		// A half-written source must leave nothing behind, or "this source failed"
-		// and "this source contributed" would both be true of the same build.
-		db.run("ROLLBACK");
+		// and "this source contributed" would both be true of the same build. There
+		// is no rollback journal to undo it with -- see schema.ts -- so the rows go
+		// by name. The blob rows it may have added are unreferenced and harmless.
+		db.run("COMMIT");
+		db.run("DELETE FROM record WHERE source = ?", [source.name]);
 		throw err;
 	} finally {
 		insert.free();
+		putBlob.free();
+		findBlob.free();
 	}
 	return n;
 }
@@ -142,7 +166,7 @@ function insertRecords(db: Database, source: Source, body: string): number {
  */
 function identify(db: Database): void {
 	const cursor = db.prepare(
-		"SELECT join_key, source, priority, source_key, doc FROM record ORDER BY join_key, priority",
+		"SELECT join_key, source, priority, source_key, doc FROM record_full ORDER BY join_key, priority",
 	);
 	const insert = db.prepare(
 		"INSERT INTO model (id, provider, mode, created, sources, prices) VALUES (?,?,?,?,?,?)",

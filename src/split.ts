@@ -169,6 +169,62 @@ function endOfContainer(text: string, at: number): number {
 }
 
 /**
+ * The smallest field worth holding once rather than per record. Below this the
+ * row in `blob` and the reference replacing the value cost about what the value
+ * cost, and every lookup is a join for nothing.
+ */
+const WORTH_EXTRACTING = 512;
+
+/** A field lifted out of a record, and the record with a reference in its place. */
+export interface Extracted {
+	/** The record, with `field`'s value replaced by {"$blob": 0}. */
+	doc: string;
+	/** The field lifted out, or null when nothing was worth lifting. */
+	field: string | null;
+	/** Its value, verbatim. */
+	value: string | null;
+}
+
+/**
+ * extractLargest lifts a record's biggest object-valued field out of it.
+ *
+ * This is normalization, not compression: bifrost-parameters repeats 532
+ * distinct `model_parameters` schemas across 9,934 models, and holding each copy
+ * costs 14.6 MB of a database that has to fit, with SQLite's own working memory,
+ * inside a 128 MB isolate.
+ *
+ * ONE field, the largest. Measured on the real documents, the largest
+ * object-valued field carries 99.7% of the repeated bytes, and one field is what
+ * a single `json_set` in the record_full view can put back -- a variable number
+ * of them is not expressible as a view, and a view is what makes the downloaded
+ * database usable without this code.
+ *
+ * The field name must be a plain identifier, because the view addresses it as
+ * '$.' || field and a name containing a dot or a quote would address something
+ * else. Anything else stays inline, which is always correct and merely larger.
+ */
+export function extractLargest(raw: string): Extracted {
+	const fields = [...entries(raw)];
+	let at = -1;
+	for (let i = 0; i < fields.length; i++) {
+		const [key, value] = fields[i];
+		if (value.length < WORTH_EXTRACTING) continue;
+		const first = value[0];
+		if (first !== "{" && first !== "[") continue;
+		if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+		if (at < 0 || value.length > fields[at][1].length) at = i;
+	}
+	if (at < 0) return { doc: raw, field: null, value: null };
+
+	// Rebuilt rather than spliced, so the marker sits exactly where the field was
+	// and the remaining values are still the source's own bytes.
+	const parts = fields.map(([key, value], i) =>
+		`${JSON.stringify(key)}:${i === at ? '{"$blob":0}' : value}`,
+	);
+	return { doc: `{${parts.join(",")}}`, field: fields[at][0], value: fields[at][1] };
+}
+
+/**
  * splitTopLevel is the one call ingest makes: `key -> raw record text` for
  * either document shape. An enveloped source has no key of its own, so the
  * caller reads the id out of the record it just parsed.

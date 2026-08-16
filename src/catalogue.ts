@@ -87,7 +87,7 @@ export class Catalogue {
 		const { sql, values } = where(filter);
 		const cursor = this.db.prepare(
 			`SELECT r.join_key, r.source, r.priority, r.source_key, r.doc
-			 FROM record r JOIN model m ON m.id = r.join_key
+			 FROM record_full r JOIN model m ON m.id = r.join_key
 			 ${sql}
 			 ORDER BY r.join_key, r.priority`,
 		);
@@ -171,7 +171,7 @@ export class Catalogue {
 
 	private rowsFor(id: string): Row[] {
 		return this.all(
-			"SELECT join_key, source, priority, source_key, doc FROM record WHERE join_key = ? ORDER BY priority",
+			"SELECT join_key, source, priority, source_key, doc FROM record_full WHERE join_key = ? ORDER BY priority",
 			[id],
 		).map((v) => ({
 			joinKey: String(v[0]),

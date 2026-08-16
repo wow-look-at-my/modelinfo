@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import test from "node:test";
 import { Catalogue } from "../src/catalogue.ts";
 import { parseFilter } from "../src/filter.ts";
 import { ingest } from "../src/ingest.ts";
 import type { Sqlite, SqlValue } from "../src/sqlite.ts";
 import { SOURCES } from "../src/sources.ts";
-import { fixtureFetcher, harness, type Harness } from "./helpers.ts";
+import { FIXTURES, fixtureFetcher, harness, type Harness } from "./helpers.ts";
 
 async function built(h: Harness): Promise<{ bytes: Uint8Array; sqlite: Sqlite }> {
 	const bytes = await ingest({
@@ -53,6 +55,53 @@ test("every source's records are stored verbatim, under its own key", async () =
 	// Verbatim: the stored bytes still parse, and still say what the source said.
 	const doc = JSON.parse(String(bySource.litellm[2])) as Record<string, unknown>;
 	assert.equal(doc.litellm_provider, "openai");
+});
+
+test("record_full reconstructs every record exactly as its source published it", async () => {
+	// The largest object-valued field is held once in `blob` and referenced, which
+	// is 14.6 MB off the real documents. That is only allowed to be a storage
+	// decision: what comes back out has to be what went in, field for field, for
+	// every record of every source.
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	const stored = new Map<string, unknown>();
+	for (const v of rows(sqlite, bytes, "SELECT source, source_key, doc FROM record_full")) {
+		stored.set(`${String(v[0])} ${String(v[1])}`, JSON.parse(String(v[2])));
+	}
+
+	let checked = 0;
+	for (const source of SOURCES) {
+		const text = fs.readFileSync(path.join(FIXTURES, `${source.name}.json`), "utf8");
+		const doc = JSON.parse(text) as Record<string, unknown>;
+		const published: [string, unknown][] = source.envelope
+			? (doc[source.envelope] as Record<string, unknown>[]).map((r) => [
+					String(r[source.idField]),
+					r,
+				])
+			: Object.entries(doc);
+		for (const [key, value] of published) {
+			if (source.skip.includes(key)) continue;
+			assert.deepEqual(stored.get(`${source.name} ${key}`), value, `${source.name} ${key}`);
+			checked++;
+		}
+	}
+	assert.ok(checked > 60, `${checked} records compared`);
+
+	const lifted = Number(
+		rows(sqlite, bytes, "SELECT COUNT(*) FROM record WHERE field IS NOT NULL")[0][0],
+	);
+	assert.ok(lifted > 0, "and some of them really did have a field lifted out");
+});
+
+test("a value two models share is stored once", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	const [references, distinct] = rows(
+		sqlite,
+		bytes,
+		"SELECT (SELECT COUNT(*) FROM record WHERE blob_id IS NOT NULL), (SELECT COUNT(*) FROM blob)",
+	)[0];
+	assert.ok(Number(references) > Number(distinct), `${references} references, ${distinct} values`);
 });
 
 test("litellm's sample_spec is documentation, not a model", async () => {

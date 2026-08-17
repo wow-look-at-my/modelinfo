@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import path from "node:path";
 import test from "node:test";
 import { Catalogue } from "../src/catalogue.ts";
 import { parseFilter } from "../src/filter.ts";
 import { ingest } from "../src/ingest.ts";
+import { handle } from "../src/service.ts";
+import { splitTopLevel } from "../src/split.ts";
 import type { Sqlite, SqlValue } from "../src/sqlite.ts";
 import { SOURCES } from "../src/sources.ts";
-import { FIXTURES, fixtureFetcher, harness, type Harness } from "./helpers.ts";
+import { fixtureFile, fixtureFetcher, harness, type Harness } from "./helpers.ts";
 
 async function built(h: Harness): Promise<{ bytes: Uint8Array; sqlite: Sqlite }> {
 	const bytes = await ingest({
@@ -71,14 +72,18 @@ test("record_full reconstructs every record exactly as its source published it",
 
 	let checked = 0;
 	for (const source of SOURCES) {
-		const text = fs.readFileSync(path.join(FIXTURES, `${source.name}.json`), "utf8");
-		const doc = JSON.parse(text) as Record<string, unknown>;
-		const published: [string, unknown][] = source.envelope
-			? (doc[source.envelope] as Record<string, unknown>[]).map((r) => [
-					String(r[source.idField]),
-					r,
-				])
-			: Object.entries(doc);
+		const text = fs.readFileSync(fixtureFile(source), "utf8");
+		// The shipped split path is the source of truth for what each source
+		// published: it handles JSON objects, enveloped arrays, and crof's
+		// HTML-embedded array, so this test compares against exactly what ingest
+		// stored rather than a hand-rolled reading of the fixture.
+		const published: [string, unknown][] = [];
+		for (const [key, raw] of splitTopLevel(text, source.envelope, source.htmlAnchor)) {
+			const record = JSON.parse(raw) as Record<string, unknown>;
+			const id = source.envelope || source.htmlAnchor ? String(record[source.idField]) : key;
+			published.push([id, record]);
+		}
+
 		for (const [key, value] of published) {
 			if (source.skip.includes(key)) continue;
 			assert.deepEqual(stored.get(`${source.name} ${key}`), value, `${source.name} ${key}`);
@@ -255,7 +260,7 @@ test("meta records what the build did, so /db explains itself", async () => {
 		assert.equal(meta.ttl_seconds, "3600");
 		assert.equal(
 			meta.source_order,
-			"openrouter,bifrost-datasheet,bifrost-parameters,litellm",
+			"openrouter,bifrost-datasheet,bifrost-parameters,litellm,crof",
 		);
 		assert.equal(Number(meta.models), catalogue.total());
 		assert.ok(Number(meta.records) > Number(meta.models));
@@ -271,4 +276,155 @@ test("two ingests of one input produce identical bytes", async () => {
 	const first = await built(a);
 	const second = await built(b);
 	assert.deepEqual(first.bytes, second.bytes);
+});
+
+// crof.ai is the fifth source: its pricing page inlines an `allModels` array in
+// HTML (no public API), and it is the only source publishing per-model `speed`
+// (tok/s), `cache_rate`, and `quantization`, and the only one whose prices are
+// per MILLION tokens. These tests drive the real ingest+fold path against a
+// real slice of the page (test/fixtures/crof.html), not pre-extracted JSON.
+
+const CROF = SOURCES.find((s) => s.name === "crof")!;
+const AT = "https://modelinfo.pazer.ai";
+
+test("crof is ingested as a source: its models appear in record and model under a crof source", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+
+	// criterion 1: a crof model from the page is in the `record` table, under a
+	// crof source -- proving the page's data was pulled in, not just registered.
+	const rec = rows(sqlite, bytes, [
+		"SELECT source, source_key FROM record",
+		"WHERE join_key = 'deepseek-v4-pro-0813' AND source = 'crof'",
+	].join(" "));
+	assert.equal(rec.length, 1, "a crof row for deepseek-v4-pro-0813");
+	assert.equal(String(rec[0][1]), "deepseek-v4-pro-0813");
+
+	// ...and in the `model` table.
+	const mdl = rows(sqlite, bytes, "SELECT id FROM model WHERE id = 'deepseek-v4-pro-0813'");
+	assert.equal(mdl.length, 1, "a model row for deepseek-v4-pro-0813");
+
+	// crof contributed all 20 models from the page, and the build is not degraded.
+	const crofCount = Number(rows(sqlite, bytes, "SELECT COUNT(*) FROM record WHERE source = 'crof'")[0][0]);
+	assert.equal(crofCount, 20, "all 20 models from the page's allModels array");
+	const catalogue = new Catalogue(sqlite, bytes);
+	try {
+		assert.deepEqual(catalogue.degraded(), []);
+		assert.ok(catalogue.sources(h.now!(), 3600).some((s) => s.name === "crof" && s.models === 20));
+	} finally {
+		catalogue.close();
+	}
+});
+
+test("crof's per-million prices enter unified pricing in USD-per-token, scaled by 1e6", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	const catalogue = new Catalogue(sqlite, bytes);
+	try {
+		// criterion 2: the page lists prompt "0.35" (per million); pricing.prompt
+		// is "0.00000035" (per token), and completion/cache_prompt likewise scaled.
+		const model = catalogue.one("deepseek-v4-pro-0813");
+		assert.ok(model, "deepseek-v4-pro-0813 folded");
+		assert.equal(model.pricing.prompt, "0.00000035", "0.35 / 1e6 per token");
+		assert.equal(model.pricing.completion, "0.00000080", "0.80 / 1e6 per token");
+		assert.equal(model.pricing.cache_prompt, "0.00000001", "0.01 / 1e6 per token");
+
+		// The scaling is at FOLD time, not in storage: the stored doc keeps crof's
+		// verbatim per-million values (record.doc is the source's own bytes), so a
+		// 1e6x error in `pricing` is not hiding a 1e6x error in the database.
+		const doc = rows(sqlite, bytes, "SELECT doc FROM record_full WHERE source = 'crof' AND source_key = 'deepseek-v4-pro-0813'")[0][0];
+		const stored = JSON.parse(String(doc)) as { pricing: { prompt: string } };
+		assert.equal(stored.pricing.prompt, "0.35", "doc kept crof's per-million value verbatim");
+	} finally {
+		catalogue.close();
+	}
+});
+
+test("crof's speed (tok/s) and page-only facts survive on the merged record", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	const catalogue = new Catalogue(sqlite, bytes);
+	try {
+		// criterion 3: speed (tokens/sec) plus at least one other page-only fact
+		// (cache_rate or quantization) survive on the merged crof record.
+		const model = catalogue.one("deepseek-v4-pro-0813");
+		assert.ok(model);
+		assert.equal(model.speed, 83, "tok/s");
+		assert.equal(model.cache_rate, 81);
+		assert.equal(model.quantization, "Q8_0");
+		assert.equal(model.context_length, "1,000,000", "crof's own value, verbatim");
+		assert.equal(model.created, 1786736315, "crof's epoch seconds");
+
+		// crof's pricing metadata (discount, *_original) is not in unified pricing
+		// but survives as crof's own fields -- nothing is dropped.
+		const glm = catalogue.one("glm-5.2");
+		assert.ok(glm);
+		assert.ok(!("discount" in glm.pricing), JSON.stringify(glm.pricing));
+		assert.equal(glm.discount, 50.0);
+		assert.equal(glm.prompt_original, "0.30");
+	} finally {
+		catalogue.close();
+	}
+});
+
+test("a crof source failure is reported, not silently dropped", async () => {
+	// criterion 4: when crof's page (or its inline array) cannot be read, crof is
+	// named in `degraded` and /health (503), and the build still succeeds off the
+	// other sources. It throws only if EVERY source fails.
+	const h = await harness({
+		fetcher: fixtureFetcher({
+			// A page that dropped the array anchor: a real crof failure mode (a
+			// redesign that moved allModels), served as HTML so the anchor scan
+			// is what fails -- not a content-type or status quirk.
+			[CROF.url]: () => new Response("<html><script>const models = [];</script></html>", {
+				status: 200,
+				headers: { "content-type": "text/html" },
+			}),
+		}),
+	});
+	const bytes = await ingest({
+		sqlite: h.sqlite,
+		waitUntil: h.waitUntil,
+		fetcher: h.fetcher,
+		store: h.store,
+		now: h.now,
+	});
+
+	const catalogue = new Catalogue(h.sqlite, bytes);
+	try {
+		// crof is named in degraded...
+		assert.deepEqual(catalogue.degraded(), ["crof"]);
+		const report = catalogue.sources(h.now!(), 3600).find((s) => s.name === "crof");
+		assert.match(String(report?.error), /allModels/);
+		assert.equal(report?.models, 0);
+		// ...and the other four still built a usable catalogue.
+		assert.ok(catalogue.total() > 10, "the other sources still produce a catalogue");
+	} finally {
+		catalogue.close();
+	}
+
+	// /health answers 503 and names crof.
+	const health = await handle(new Request(AT + "/health"), h);
+	assert.equal(health.status, 503);
+	const body = (await health.json()) as { degraded: string[] };
+	assert.deepEqual(body.degraded, ["crof"]);
+});
+
+test("a build where every source fails, including crof, still throws", async () => {
+	const h = await harness({
+		fetcher: fixtureFetcher(
+			Object.fromEntries(SOURCES.map((s) => [s.url, () => new Response("nope", { status: 500 })])),
+		),
+	});
+	await assert.rejects(
+		() =>
+			ingest({
+				sqlite: h.sqlite,
+				waitUntil: h.waitUntil,
+				fetcher: h.fetcher,
+				store: h.store,
+				now: h.now,
+			}),
+		/every source failed/,
+	);
 });

@@ -1,5 +1,5 @@
 /**
- * The four upstreams, and the order they win ties in.
+ * The five upstreams, and the order they win ties in.
  *
  * PRECEDENCE. The lowest priority owns a field; a later source fills gaps and
  * never overwrites. So this list is a ruling, not a convenience:
@@ -13,6 +13,11 @@
  *                         datasheet.
  *   3 litellm             upstream of the two above, and the fallback when
  *                         either has not picked a change up yet.
+ *   4 crof                a routing provider with no public API; its pricing page
+ *                         inlines an `allModels` array in HTML. It is the only
+ *                         source publishing per-model `speed` (tok/s),
+ *                         `cache_rate`, and `quantization`, and the only one
+ *                         whose prices are per MILLION tokens -- see rateScale.
  */
 export interface Source {
 	name: string;
@@ -21,13 +26,38 @@ export interface Source {
 	priority: number;
 	/**
 	 * The member holding an array of records, for a document that is not itself
-	 * keyed by model. Empty means the top-level object's keys ARE the model keys.
+	 * keyed by model. Empty means the top-level object's keys ARE the model keys
+	 * (unless `htmlAnchor` is set, in which case the array is embedded in HTML).
 	 */
 	envelope: string;
-	/** The field carrying the id, for an enveloped document. */
+	/** The field carrying the id, for an enveloped or HTML-embedded array. */
 	idField: string;
 	/** Top-level keys that are not models. */
 	skip: string[];
+	/**
+	 * Anchor text immediately preceding an embedded JSON array, for a source
+	 * whose document is HTML wrapping a JS literal rather than JSON (crof). Empty
+	 * means the body is JSON. The split path finds this string, then the balanced
+	 * `[...]` after it; a page that dropped the anchor is a broken source, not a
+	 * quiet day.
+	 */
+	htmlAnchor: string;
+	/**
+	 * The divisor taking a source's published rates into USD-per-token, the unit
+	 * unified `pricing` speaks. crof publishes per MILLION tokens, so its rates
+	 * divide by 1e6 at fold time. 1 (the default) leaves a source's rates as it
+	 * wrote them. The stored `doc` keeps the source's own values verbatim; only
+	 * the merged `pricing` is scaled.
+	 */
+	rateScale: number;
+	/**
+	 * The rate names inside a source's nested `pricing` object, when that object
+	 * mixes rates with other metadata. crof keeps a `discount` and `*_original`
+	 * fields beside its rates; only the names listed here are per-token rates,
+	 * and the rest survive as the source's own fields rather than polluting
+	 * `pricing`. Empty means every member of `pricing` is a rate (OpenRouter).
+	 */
+	rateFields: string[];
 }
 
 export const SOURCES: Source[] = [
@@ -38,6 +68,9 @@ export const SOURCES: Source[] = [
 		envelope: "data",
 		idField: "id",
 		skip: [],
+		htmlAnchor: "",
+		rateScale: 1,
+		rateFields: [],
 	},
 	{
 		name: "bifrost-datasheet",
@@ -46,6 +79,9 @@ export const SOURCES: Source[] = [
 		envelope: "",
 		idField: "",
 		skip: [],
+		htmlAnchor: "",
+		rateScale: 1,
+		rateFields: [],
 	},
 	{
 		name: "bifrost-parameters",
@@ -54,6 +90,9 @@ export const SOURCES: Source[] = [
 		envelope: "",
 		idField: "",
 		skip: [],
+		htmlAnchor: "",
+		rateScale: 1,
+		rateFields: [],
 	},
 	{
 		name: "litellm",
@@ -64,6 +103,28 @@ export const SOURCES: Source[] = [
 		// sample_spec is litellm's documentation of its own schema, checked into
 		// the same map as if it were a model. It is not one.
 		skip: ["sample_spec"],
+		htmlAnchor: "",
+		rateScale: 1,
+		rateFields: [],
+	},
+	{
+		// crof.ai has no public API (`/pricing_api` answers 401); the only public
+		// source is the inline `const allModels = [...]` array in the pricing
+		// page's HTML. Its ids carry no provider prefix, so its models join on
+		// their bare keys and are mostly NEW catalogue entries rather than merges.
+		name: "crof",
+		url: "https://crof.ai/pricing",
+		priority: 4,
+		envelope: "",
+		idField: "id",
+		skip: [],
+		htmlAnchor: "const allModels = ",
+		// crof publishes prices per million tokens; the rest of the catalogue is
+		// per token, so rates divide by 1e6 at fold time (merge.ts).
+		rateScale: 1_000_000,
+		// crof's `pricing` object mixes rates with a `discount` and `*_original`
+		// fields; only these three are per-token rates.
+		rateFields: ["prompt", "completion", "cache_prompt"],
 	},
 ];
 
@@ -71,3 +132,24 @@ export const SOURCES: Source[] = [
 export const SOURCE_ORDER: string[] = [...SOURCES]
 	.sort((a, b) => a.priority - b.priority)
 	.map((s) => s.name);
+
+/**
+ * The per-source rate config `foldRecords` needs: the divisor into USD-per-token
+ * and the set of rate names inside a nested `pricing` object. foldRecords looks
+ * it up by source name rather than holding a copy of SOURCES, so merge stays
+ * decoupled from the source list's order. An unknown source gets the identity
+ * config (no scaling, every `pricing` member a rate), which is the behavior the
+ * four JSON sources already rely on.
+ */
+export interface RateConfig {
+	rateScale: number;
+	rateFields: Set<string>;
+}
+
+const RATE_CONFIG_BY_NAME = new Map<string, RateConfig>(
+	SOURCES.map((s) => [s.name, { rateScale: s.rateScale, rateFields: new Set(s.rateFields) }]),
+);
+
+export function rateConfig(name: string): RateConfig {
+	return RATE_CONFIG_BY_NAME.get(name) ?? { rateScale: 1, rateFields: new Set() };
+}

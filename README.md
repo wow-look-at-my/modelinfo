@@ -1,6 +1,6 @@
 # modelinfo
 
-One model catalogue, merged from four sources, served at
+One model catalogue, merged from five sources, served at
 **https://modelinfo.pazer.ai** in the OpenAI `/v1/models` shape.
 
 It exists so that no model shows a blank where its price should be.
@@ -34,6 +34,12 @@ fill gaps:
 2. [Bifrost datasheet](https://getbifrost.ai/datasheet)
 3. [Bifrost model parameters](https://getbifrost.ai/datasheet/model-parameters)
 4. [LiteLLM](https://raw.githubusercontent.com/BerriAI/litellm/refs/heads/main/model_prices_and_context_window.json)
+5. [crof.ai](https://crof.ai/pricing) — a routing provider with no public API;
+   its pricing page inlines an `allModels` array in HTML, which this source
+   extracts. crof is the only source publishing per-model `speed` (tok/s),
+   `cache_rate`, and `quantization`, and the only one whose prices are per
+   **million** tokens — they are divided by 1e6 at fold time so they enter the
+   unified `pricing` in USD-per-token like every other source.
 
 `pricing` is the exception: it is assembled per rate, so a model OpenRouter
 prices for prompt and completion still picks up a cache-write rate only LiteLLM
@@ -65,7 +71,7 @@ sqlite3 modelinfo.sqlite "SELECT source, json_extract(doc, '\$.input_cost_per_to
 
 ```sh
 npm install
-npm test          # 52 tests, against real slices of all four sources
+npm test          # 68 tests, against real slices of all five sources
 npm run typecheck
 npm run dev       # wrangler dev, hits the live upstreams
 ```

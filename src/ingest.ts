@@ -112,14 +112,16 @@ function insertRecords(db: Database, source: Source, body: string): number {
 	let n = 0;
 	db.run("BEGIN");
 	try {
-		for (const [key, raw] of splitTopLevel(body, source.envelope)) {
+		for (const [key, raw] of splitTopLevel(body, source.envelope, source.htmlAnchor)) {
 			if (skip.has(key)) continue;
 			// The ONLY parse in the ingest path, and its subject is one ~2 KB record
 			// rather than an 18 MB document.
 			const record = JSON.parse(raw) as unknown;
 			if (!record || typeof record !== "object" || Array.isArray(record)) continue;
 			const fields = record as Record<string, unknown>;
-			const id = source.envelope ? String(fields[source.idField] ?? "") : key;
+			// An enveloped or HTML-embedded array has no key of its own; the id lives
+			// in a field. A bare object's keys ARE the model ids.
+			const id = source.envelope || source.htmlAnchor ? String(fields[source.idField] ?? "") : key;
 			if (!id) continue;
 
 			const { doc, field, value } = extractLargest(raw);

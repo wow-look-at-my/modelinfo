@@ -4,7 +4,7 @@ Notes for Claude working in this repository.
 
 ## What this is
 
-`modelinfo` — a Cloudflare Worker that merges four model catalogues into one and
+`modelinfo` — a Cloudflare Worker that merges five model catalogues into one and
 serves it at `modelinfo.pazer.ai`, so that no model shows a blank where its price
 should be. `/v1/models` is OpenAI's shape, `/db` is the ingest as a SQLite file.
 
@@ -20,10 +20,11 @@ npm run typecheck # src against workers-types, tests against node types
 npm run dev       # wrangler dev --local, hits the live upstreams
 ```
 
-Tests run against real slices of all four sources (`test/fixtures/`), because
+Tests run against real slices of all five sources (`test/fixtures/`), because
 every merge rule is about how independent sources disagree — two spellings of one
 model, a `base_model` nineteen priced variants share, a provider-prefixed twin
-that must not merge. A hand-written stub agrees with itself and proves none of it.
+that must not merge, a source whose prices are per million tokens. A hand-written
+stub agrees with itself and proves none of it.
 
 ## The layering
 
@@ -66,7 +67,10 @@ that must not merge. A hand-written stub agrees with itself and proves none of i
   data was then, and this database is served stale for up to an hour.
 - **`record.doc` is the source's own bytes.** Not re-serialized, not normalized,
   not reordered, minus at most one field held once in `blob`. Query
-  `record_full`, which puts it back.
+  `record_full`, which puts it back. crof publishes prices per MILLION tokens;
+  those per-million values are stored verbatim in `doc` and divided by 1e6 only
+  at fold time, so a rate in `pricing` is never the source's own number in the
+  wrong unit.
 - **A rate is a decimal string, and a negative is refused rather than clamped.**
   A wrong number in a money column is worse than a missing one.
 

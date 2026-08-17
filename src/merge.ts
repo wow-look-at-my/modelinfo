@@ -1,3 +1,4 @@
+import { rateConfig } from "./sources.ts";
 import type { Model } from "./types.ts";
 
 /**
@@ -82,6 +83,55 @@ function expand(s: string): string {
 
 export function lower(s: string): string {
 	return s.trim().toLowerCase();
+}
+
+/**
+ * scaleRate renders a rate divided by `scale` as a plain decimal string, USD
+ * per token, by shifting the decimal point on the source's own digits rather
+ * than dividing a double.
+ *
+ * crof publishes "0.35" per MILLION tokens; the unified `pricing` is per token.
+ * Dividing the parsed double by 1e6 gives "0.0000008000000000000001" for "0.80",
+ * so the point is shifted instead: scaleRate("0.80", 1e6) is "0.00000800",
+ * keeping crof's stated precision. A scale of 1 (the default for the other
+ * sources) returns rateString unchanged. A non-rate is refused, as rateString
+ * refuses it. The stored `doc` is never scaled -- only the merged `pricing` is.
+ */
+export function scaleRate(v: unknown, scale: number): string | null {
+	const base = rateString(v);
+	if (base === null) return null;
+	if (scale === 1) return base;
+	return shiftPoint(base, scale);
+}
+
+/**
+ * shiftPoint moves a plain decimal string's point LEFT by `log10(divisor)`
+ * places, with no exponent and no float artifacts. `divisor` must be a power of
+ * ten (1e6 for crof); the source's own digits are preserved, so "8.00" becomes
+ * "0.00000800" rather than the "0.000008" a trim would give -- a rate keeps the
+ * precision its source claimed.
+ */
+function shiftPoint(s: string, divisor: number): string {
+	const places = Math.round(Math.log10(divisor));
+	if (!Number.isInteger(places) || 10 ** places !== divisor) {
+		throw new Error(`rate scale ${divisor} is not a power of ten`);
+	}
+	const neg = s.startsWith("-");
+	const body = neg ? s.slice(1) : s;
+	const dot = body.indexOf(".");
+	const intPart = dot < 0 ? body : body.slice(0, dot);
+	const fracPart = dot < 0 ? "" : body.slice(dot + 1);
+	const digits = intPart + fracPart;
+	const point = intPart.length - places; // index of the point within `digits`
+	let out: string;
+	if (point <= 0) {
+		out = `0.${"0".repeat(-point)}${digits}`;
+	} else if (point >= digits.length) {
+		out = digits + "0".repeat(point - digits.length);
+	} else {
+		out = `${digits.slice(0, point)}.${digits.slice(point)}`;
+	}
+	return (neg ? "-" : "") + out;
 }
 
 /**
@@ -188,9 +238,21 @@ export function foldRecords(rows: Row[]): Model {
 		// A source already speaking the pricing vocabulary hands it over whole.
 		const published = record.pricing;
 		if (published && typeof published === "object" && !Array.isArray(published)) {
+			// A source may publish in a different unit (crof: per million tokens)
+			// and may mix rates with other metadata (crof: a `discount` and
+			// `*_original` fields). rateConfig names the rates and the divisor; the
+			// non-rates survive as the source's own fields rather than polluting
+			// `pricing`. A source with no declared rate fields (OpenRouter) treats
+			// every member as a rate, unscaled -- its original behavior.
+			const { rateScale, rateFields } = rateConfig(row.source);
+			const known = rateFields.size > 0;
 			for (const [name, value] of Object.entries(published as Record<string, unknown>)) {
+				if (known && !rateFields.has(name)) {
+					if (!(name in model)) model[name] = value;
+					continue;
+				}
 				if (name in model.pricing) continue;
-				const rate = rateString(value);
+				const rate = scaleRate(value, rateScale);
 				if (rate !== null) model.pricing[name] = rate;
 			}
 		}

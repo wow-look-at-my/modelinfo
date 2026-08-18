@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import path from "node:path";
 import test from "node:test";
-import { entries, items, splitTopLevel } from "../src/split.ts";
+import { entries, extractEmbeddedArray, items, splitTopLevel } from "../src/split.ts";
 import { SOURCES } from "../src/sources.ts";
-import { FIXTURES } from "./helpers.ts";
+import { fixtureFile } from "./helpers.ts";
 
 /**
  * The split replaces JSON.parse on the ingest path, so the bar is agreement with
@@ -13,13 +12,20 @@ import { FIXTURES } from "./helpers.ts";
  */
 test("every fixture splits into exactly what JSON.parse sees", () => {
 	for (const source of SOURCES) {
-		const text = fs.readFileSync(path.join(FIXTURES, `${source.name}.json`), "utf8");
-		const truth = JSON.parse(text) as Record<string, unknown>;
-		const expected: [string, unknown][] = source.envelope
-			? (truth[source.envelope] as unknown[]).map((v) => ["", v])
-			: Object.entries(truth);
+		const text = fs.readFileSync(fixtureFile(source), "utf8");
+		let expected: [string, unknown][];
+		if (source.htmlAnchor) {
+			// crof's "document" is HTML; the truth is the array embedded in it.
+			const truth = JSON.parse(extractEmbeddedArray(text, source.htmlAnchor)) as unknown[];
+			expected = truth.map((v) => ["", v]);
+		} else {
+			const truth = JSON.parse(text) as Record<string, unknown>;
+			expected = source.envelope
+				? (truth[source.envelope] as unknown[]).map((v) => ["", v])
+				: Object.entries(truth);
+		}
 
-		const got = [...splitTopLevel(text, source.envelope)];
+		const got = [...splitTopLevel(text, source.envelope, source.htmlAnchor)];
 		assert.equal(got.length, expected.length, `${source.name} record count`);
 		got.forEach(([key, raw], i) => {
 			assert.equal(key, expected[i][0], `${source.name} key #${i}`);
@@ -67,4 +73,34 @@ test("empty containers yield nothing rather than one empty record", () => {
 	assert.deepEqual([...entries("{}")], []);
 	assert.deepEqual([...items("[]")], []);
 	assert.deepEqual([...items('{"data":[]}', "data")], []);
+});
+
+test("extractEmbeddedArray pulls a JSON array out of HTML by its anchor", () => {
+	// A real slice of crof's pricing page: the array is inlined in a <script>
+	// after `const allModels = `, with other JS around it. The extractor must
+	// find the array by its anchor and stop at its OWN closing bracket, not the
+	// `betaModels`/`visionModels` arrays that follow it.
+	const html = `<html><body><script src="/ui/crofui.js"></script>
+		<script>
+			const isLoggedIn = false;
+			const allModels = [{"id":"a","speed":83,"pricing":{"prompt":"0.35"}}, {"id":"b","speed":77}];
+			const betaModels = ["x", "y"];
+			const visionModels = ["b"];
+		</script></body></html>`;
+	const array = extractEmbeddedArray(html, "const allModels = ");
+	const got = [...items(array, "")].map((raw) => JSON.parse(raw));
+	assert.deepEqual(got, [
+		{ id: "a", speed: 83, pricing: { prompt: "0.35" } },
+		{ id: "b", speed: 77 },
+	]);
+	// The extracted text is itself valid JSON, so the rest of the split path
+	// (which only JSON.parses slices) sees what the page published.
+	assert.deepEqual(JSON.parse(array), got);
+});
+
+test("a missing array anchor is an error, not an empty array", () => {
+	// A page that dropped the anchor is a broken source, and "no models" would
+	// make a redesign look like a quiet day -- the ingest path reports it.
+	assert.throws(() => extractEmbeddedArray("<script>const models = [];</script>", "const allModels = "), /no "const allModels = " anchor/);
+	assert.throws(() => extractEmbeddedArray("const allModels = {};", "const allModels = "), /not followed by an array/);
 });

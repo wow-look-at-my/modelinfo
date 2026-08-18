@@ -225,11 +225,46 @@ export function extractLargest(raw: string): Extracted {
 }
 
 /**
+ * extractEmbeddedArray finds a `[...]` JSON array embedded in a larger document
+ * (HTML wrapping a JS literal) and returns its raw text, anchored on the string
+ * that immediately precedes it.
+ *
+ * crof.ai has no API, so its pricing page inlines `const allModels = [...]`
+ * inside a `<script>`. This finds that array by its anchor and hands back the
+ * bytes between the balanced brackets, so the rest of the split path treats it
+ * as a bare array without knowing it came out of HTML. A missing anchor or a
+ * non-array after it is an ERROR, not an empty document: a page that moved the
+ * array is a broken source, and "no models" would make a redesign look like a
+ * quiet day.
+ */
+export function extractEmbeddedArray(text: string, anchor: string): string {
+	const at = text.indexOf(anchor);
+	if (at < 0) throw new SplitError(`no ${JSON.stringify(anchor)} anchor`, text, 0);
+	let i = skipWs(text, at + anchor.length);
+	if (text[i] !== "[") {
+		throw new SplitError(`${JSON.stringify(anchor)} is not followed by an array`, text, at);
+	}
+	const end = endOfContainer(text, i);
+	return text.slice(i, end);
+}
+
+/**
  * splitTopLevel is the one call ingest makes: `key -> raw record text` for
  * either document shape. An enveloped source has no key of its own, so the
- * caller reads the id out of the record it just parsed.
+ * caller reads the id out of the record it just parsed. An HTML-embedded source
+ * (crof) is the same -- the array is pulled out of the page first, then split
+ * as a bare array.
  */
-export function* splitTopLevel(text: string, envelope = ""): Generator<[string, string]> {
+export function* splitTopLevel(
+	text: string,
+	envelope = "",
+	htmlAnchor = "",
+): Generator<[string, string]> {
+	if (htmlAnchor) {
+		const array = extractEmbeddedArray(text, htmlAnchor);
+		for (const raw of items(array, "")) yield ["", raw];
+		return;
+	}
 	if (envelope) {
 		for (const raw of items(text, envelope)) yield ["", raw];
 		return;

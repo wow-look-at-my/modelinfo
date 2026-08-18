@@ -24,6 +24,15 @@ export async function sqlite(): Promise<Sqlite> {
 	});
 }
 
+/** The fixture file for a source: `.html` when one exists (crof's page is HTML),
+ * `.json` otherwise. The fetcher and the split/ingest tests both load a source's
+ * published records through this, so crof is exercised against real page bytes
+ * rather than pre-cleaned JSON. */
+export function fixtureFile(source: { name: string }): string {
+	const html = path.join(FIXTURES, `${source.name}.html`);
+	return fs.existsSync(html) ? html : path.join(FIXTURES, `${source.name}.json`);
+}
+
 /** Answers each source's URL from its fixture. */
 export function fixtureFetcher(overrides: Record<string, () => Response> = {}): typeof fetch {
 	return (async (input: RequestInfo | URL) => {
@@ -32,9 +41,10 @@ export function fixtureFetcher(overrides: Record<string, () => Response> = {}): 
 		if (override) return override();
 		const source = SOURCES.find((s) => s.url === url);
 		if (!source) throw new Error(`no fixture for ${url}`);
-		return new Response(fs.readFileSync(path.join(FIXTURES, `${source.name}.json`), "utf8"), {
+		const file = fixtureFile(source);
+		return new Response(fs.readFileSync(file, "utf8"), {
 			status: 200,
-			headers: { "content-type": "application/json" },
+			headers: { "content-type": file.endsWith(".html") ? "text/html" : "application/json" },
 		});
 	}) as typeof fetch;
 }

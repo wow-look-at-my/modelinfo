@@ -6,6 +6,7 @@ import { forgetInFlight, memoryStore, type SWRStore } from "../src/cache.ts";
 import { SOURCES } from "../src/sources.ts";
 import { forgetSqlite, loadSqlite, type Sqlite } from "../src/sqlite.ts";
 import type { Service } from "../src/service.ts";
+import type { SnapshotBucket } from "../src/snapshot.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const FIXTURES = path.join(here, "fixtures");
@@ -97,4 +98,34 @@ export async function settle(h: Harness): Promise<void> {
 		const pending = h.background.splice(0, h.background.length);
 		await Promise.all(pending);
 	}
+}
+
+/** An in-memory stand-in for the R2 bucket, with its writes counted. */
+export interface MemoryBucket extends SnapshotBucket {
+	/** How many times a snapshot was stored. */
+	writes: number;
+	/** How many times one was asked for. */
+	reads: number;
+}
+
+export function memoryBucket(): MemoryBucket {
+	const held = new Map<string, { bytes: ArrayBuffer; meta: Record<string, string> }>();
+	const bucket: MemoryBucket = {
+		writes: 0,
+		reads: 0,
+		async get(key) {
+			bucket.reads++;
+			const entry = held.get(key);
+			if (!entry) return null;
+			return {
+				arrayBuffer: async () => entry.bytes,
+				customMetadata: entry.meta,
+			};
+		},
+		async put(key, value, options) {
+			bucket.writes++;
+			held.set(key, { bytes: value, meta: options?.customMetadata ?? {} });
+		},
+	};
+	return bucket;
 }

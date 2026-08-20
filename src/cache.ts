@@ -89,7 +89,8 @@ export async function swr(
 		if (ageSeconds >= opts.ttlSeconds) {
 			const refresh = once(key, () => replace(key, store, produce, now, true));
 			if (opts.blockUntilFresh) {
-				return { response: revive(await refresh), ...produced(now), cold: false };
+				const fresh = await refresh;
+				return { response: revive(fresh), ...produced(fresh.headers, now), cold: false };
 			}
 			// Behind the response, never in front of it. A failure here is
 			// swallowed on purpose: the caller already has bytes, and the next
@@ -101,11 +102,30 @@ export async function swr(
 	}
 
 	const made = await once(key, () => replace(key, store, produce, now, false));
-	return { response: revive(made), ...produced(now), cold: true };
+	const fresh = produced(made.headers, now);
+	// Bytes can arrive already older than the TTL, because a cold producer may
+	// hand over a snapshot another colo built. They are served, and the rebuild
+	// they need runs behind the response like any other refresh.
+	if (fresh.ageSeconds >= opts.ttlSeconds && !opts.blockUntilFresh) {
+		opts.waitUntil(once(key, () => replace(key, store, produce, now, true)).catch(() => undefined));
+	}
+	return { response: revive(made), ...fresh, stale: fresh.ageSeconds >= opts.ttlSeconds, cold: true };
 }
 
-function produced(now: () => Date): { fetchedAt: Date; ageSeconds: number; stale: boolean } {
-	return { fetchedAt: now(), ageSeconds: 0, stale: false };
+/**
+ * produced reports the age of bytes this request just put in the cache.
+ *
+ * It reads the stamp rather than assuming zero: a snapshot another colo built
+ * arrives already old, and it is stale the moment its age passes the TTL.
+ */
+function produced(
+	headers: Headers,
+	now: () => Date,
+): { fetchedAt: Date; ageSeconds: number; stale: boolean } {
+	const stamped = headers.get(STAMP);
+	const fetchedAt = stamped ? new Date(stamped) : now();
+	const ageSeconds = Math.max(0, Math.round((now().getTime() - fetchedAt.getTime()) / 1000));
+	return { fetchedAt, ageSeconds, stale: false };
 }
 
 /**
@@ -235,7 +255,10 @@ function stamp(res: Response, now: () => Date): Response {
 	if (!res.body) throw new Error("nothing to cache: the response has no body");
 	const headers = new Headers(res.headers);
 	headers.set("cache-control", `public, max-age=${STORE_SECONDS}`);
-	headers.set(STAMP, now().toISOString());
+	// A producer that knows when its bytes were built keeps that time. The
+	// database can come from a snapshot another colo built, and a stamp written
+	// here would call an hour-old copy fresh for another hour.
+	if (!headers.has(STAMP)) headers.set(STAMP, now().toISOString());
 	return new Response(res.body, { headers });
 }
 

@@ -9,6 +9,14 @@ import { TTL_SECONDS } from "./ingest.ts";
 export interface Env {
 	/** Overrides the one-hour TTL. Unset is the default; unparseable is an error. */
 	MODELINFO_TTL_SECONDS?: string;
+	/**
+	 * The R2 bucket holding the built database for every colo.
+	 *
+	 * It is REQUIRED. Without it a colo with a cold cache builds the database
+	 * itself, which is the several-second answer the bucket exists to remove,
+	 * and a service that quietly went back to that would look healthy.
+	 */
+	SNAPSHOT: R2Bucket;
 }
 
 export default {
@@ -22,6 +30,7 @@ export default {
 				sqlite,
 				waitUntil: (p) => ctx.waitUntil(p),
 				ttlSeconds: ttlOf(env),
+				snapshot: snapshotOf(env),
 			});
 		} catch (err) {
 			// A failure here is reported as one. There is no shape of this service
@@ -61,6 +70,20 @@ export default {
  * to the default: a typo that silently reverts to an hour is a setting the
  * operator believes they changed.
  */
+/**
+ * snapshotOf reads the bucket binding, and FAILS when it is missing. A
+ * deployment without it answers every cold colo in seconds instead of
+ * milliseconds, and nothing about the responses would say so.
+ */
+function snapshotOf(env: Env): R2Bucket {
+	if (!env.SNAPSHOT) {
+		throw new Error(
+			"the SNAPSHOT R2 binding is missing; create the bucket and deploy with the binding in wrangler.toml",
+		);
+	}
+	return env.SNAPSHOT;
+}
+
 function ttlOf(env: Env): number {
 	const raw = env.MODELINFO_TTL_SECONDS?.trim();
 	if (!raw) return TTL_SECONDS;

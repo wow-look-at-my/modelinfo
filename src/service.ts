@@ -1,7 +1,9 @@
-import { cacheKey, swr, type SWRStore } from "./cache.ts";
+import { cacheKey, STAMP, swr, type SWRStore } from "./cache.ts";
 import { Catalogue } from "./catalogue.ts";
 import { canonicalQuery, modeOf, parseFilter } from "./filter.ts";
 import { ingest, TTL_SECONDS } from "./ingest.ts";
+import type { SnapshotBucket } from "./snapshot.ts";
+import { read as readSnapshot, write as writeSnapshot } from "./snapshot.ts";
 import type { Sqlite } from "./sqlite.ts";
 
 /**
@@ -18,6 +20,11 @@ export interface Service {
 	store?: SWRStore;
 	now?: () => Date;
 	ttlSeconds?: number;
+	/**
+	 * Where the built database is kept for every colo to read. Absent means each
+	 * colo builds its own, which is the several-second answer this removes.
+	 */
+	snapshot?: SnapshotBucket;
 }
 
 /**
@@ -69,6 +76,12 @@ async function cachedDatabase(svc: Service, ttl: number): Promise<Response> {
 	const cached = await swr(
 		KEYS.database,
 		async (background) => {
+			// A colo with a cold cache reads the snapshot rather than building
+			// one. Only a request that finds no snapshot at all pays for a build.
+			if (!background && svc.snapshot) {
+				const stored = await readSnapshot(svc.snapshot);
+				if (stored) return snapshotResponse(stored.bytes, stored.builtAt);
+			}
 			const bytes = await ingest({
 				sqlite: svc.sqlite,
 				waitUntil: svc.waitUntil,
@@ -81,13 +94,38 @@ async function cachedDatabase(svc: Service, ttl: number): Promise<Response> {
 				// than baking their old bytes into the new database.
 				blockUntilFresh: background,
 			});
-			return new Response(bytes, {
-				headers: { "content-type": "application/vnd.sqlite3" },
-			});
+			const builtAt = svc.now ? svc.now() : new Date();
+			if (svc.snapshot) {
+				// Behind the response. A colo that cannot write the snapshot has
+				// still built its own database, and the next writer replaces it.
+				const bucket = svc.snapshot;
+				svc.waitUntil(
+					writeSnapshot(bucket, copyOf(bytes), builtAt).catch(() => undefined),
+				);
+			}
+			return snapshotResponse(bytes, builtAt);
 		},
 		{ ttlSeconds: ttl, waitUntil: svc.waitUntil, store: svc.store, now: svc.now },
 	);
 	return cached.response;
+}
+
+/**
+ * snapshotResponse carries the time the bytes were BUILT, so the cache ages
+ * them from then. Bytes that arrive already past the TTL refresh at once.
+ */
+function snapshotResponse(bytes: Uint8Array | ArrayBuffer, builtAt: Date): Response {
+	return new Response(bytes, {
+		headers: {
+			"content-type": "application/vnd.sqlite3",
+			[STAMP]: builtAt.toISOString(),
+		},
+	});
+}
+
+/** copyOf hands the snapshot store bytes of its own to keep. */
+function copyOf(bytes: Uint8Array): ArrayBuffer {
+	return bytes.slice().buffer as ArrayBuffer;
 }
 
 async function withCatalogue<T>(

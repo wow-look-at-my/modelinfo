@@ -26,6 +26,19 @@ enabled = true
 [limits]
 cpu_ms = 30000
 
+# The built database, shared by every colo.
+#
+# `caches.default` is per-colo, so without this a colo answering its first
+# request builds the database itself: four upstreams, 22 MB of JSON, several
+# seconds. R2 is one account-wide object, so that colo reads the last build
+# instead and rebuilds behind the response.
+#
+# The bucket must exist before a deploy: `wrangler r2 bucket create
+# modelinfo-snapshot`. The Worker throws when the binding is absent.
+[[r2_buckets]]
+binding = "SNAPSHOT"
+bucket_name = "modelinfo-snapshot"
+
 [observability]
 enabled = true
 

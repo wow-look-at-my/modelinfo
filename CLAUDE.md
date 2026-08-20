@@ -57,8 +57,13 @@ stub agrees with itself and proves none of it.
   upstream serving an error page and an upstream with nothing to say are
   different facts.
 - **A request never waits on work already done once.** Past the TTL the cached
-  bytes are served as they are and the refresh runs behind the response. Only a
-  cold cache blocks.
+  bytes are served as they are and the refresh runs behind the response. A colo
+  with a cold cache reads the R2 snapshot rather than building its own, so only
+  a request that finds no snapshot pays for a build. See `docs/snapshot.md`.
+- **A snapshot carries the time it was BUILT, not the time it was read.** A colo
+  that loads an hour-old snapshot must refresh on the next request, and a stamp
+  written at read time would hide that for a whole TTL. A snapshot with no
+  usable stamp is refused rather than dated to now.
 - **A background rebuild waits for fresh sources.** Nobody is waiting on it, and
   a rebuild that accepted stale sources would carry an upstream change no further
   than the hour it was already behind.
@@ -83,7 +88,8 @@ stub agrees with itself and proves none of it.
 - **The Cache API wants a `Request`, not a string key.** A bare string reaches
   workerd as something with no `.href`.
 - **`caches.default` is per-colo**, so the hourly cron warms one colo and every
-  other warms itself on its first request. Both go through the same cache.
+  other warms itself on its first request. It warms itself from the R2 snapshot,
+  which is what keeps that first request under a second.
 - **D1 cannot serve its own file.** `D1Database.dump()` works only on databases
   created during D1's alpha period, which is why this uses sql.js and not D1.
 
@@ -96,6 +102,7 @@ stub agrees with itself and proves none of it.
 ## Where the depth lives
 
 - `docs/memory.md` — the 128 MB problem, what failed, what the numbers are.
+- `docs/snapshot.md` — the R2 snapshot: the cold colo, freshness, the bucket.
 
 This file is an index. If a change needs more than a few lines of explanation,
 write `docs/<topic>.md` and leave a pointer.

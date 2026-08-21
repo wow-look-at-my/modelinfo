@@ -1,6 +1,6 @@
 # modelinfo
 
-One model catalogue, merged from five sources, served at
+One model catalogue, merged from six sources, served at
 **https://modelinfo.pazer.ai** in the OpenAI `/v1/models` shape.
 
 It exists so that no model shows a blank where its price should be.
@@ -31,10 +31,13 @@ Merged in this order — the first to publish a field owns it, and later sources
 fill gaps:
 
 1. [OpenRouter](https://openrouter.ai/api/v1/models)
-2. [Bifrost datasheet](https://getbifrost.ai/datasheet)
-3. [Bifrost model parameters](https://getbifrost.ai/datasheet/model-parameters)
-4. [LiteLLM](https://raw.githubusercontent.com/BerriAI/litellm/refs/heads/main/model_prices_and_context_window.json)
-5. [crof.ai](https://crof.ai/pricing) — a routing provider with no public API;
+2. [ollama library](https://ollama.com/library) — the only source that knows
+   which ollama models embed. It publishes no API, so the listing page's
+   capability pills are read directly; see [docs/ollama.md](./docs/ollama.md).
+3. [Bifrost datasheet](https://getbifrost.ai/datasheet)
+4. [Bifrost model parameters](https://getbifrost.ai/datasheet/model-parameters)
+5. [LiteLLM](https://raw.githubusercontent.com/BerriAI/litellm/refs/heads/main/model_prices_and_context_window.json)
+6. [crof.ai](https://crof.ai/pricing) — a routing provider with no public API;
    its pricing page inlines an `allModels` array in HTML, which this source
    extracts. crof is the only source publishing per-model `speed` (tok/s),
    `cache_rate`, and `quantization`, and the only one whose prices are per
@@ -71,7 +74,7 @@ sqlite3 modelinfo.sqlite "SELECT source, json_extract(doc, '\$.input_cost_per_to
 
 ```sh
 npm install
-npm test          # 68 tests, against real slices of all five sources
+npm test          # against real slices of all six sources
 npm run typecheck
 npm run dev       # wrangler dev, hits the live upstreams
 ```

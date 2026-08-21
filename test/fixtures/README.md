@@ -1,6 +1,6 @@
 # Fixtures
 
-Real bodies from the five live sources, sliced to ~20 models each.
+Real bodies from the six live sources, sliced to ~20 models each.
 
 They are REAL because the merge rules are entirely about how independent
 sources disagree -- two spellings of one model, a `base_model` nineteen priced
@@ -31,5 +31,27 @@ HTML-to-array extraction is tested against the page's actual bytes. It keeps:
 - per-model `speed` (tok/s), `cache_rate`, and `quantization` -- the page-only
   facts crof contributes that no other source has.
 
+`ollama-library.html` is a real slice of `https://ollama.com/library` -- ollama
+publishes no JSON, so the page's own markup is what the transcriber reads (see
+`docs/ollama.md`). Seven families, each kept for a case:
+
+- `nomic-embed-text`, `granite-embedding` -- both embedding families. bifrost
+  calls the first one's tags `chat` and gets the second's right, so the fix and
+  the no-op are both covered.
+- `qwen3` -- `tools` and `thinking`, plus eight parameter-size pills.
+- `gemma3n` -- sizes `e2b`/`e4b`, which anything classifying a pill by the shape
+  of its text reads as capabilities.
+- `gemma4` -- four capabilities, and the cyan `cloud` pill that is not one.
+- `codellama` -- the page states no mode for it and litellm states `completion`,
+  which is what a source asserting a `chat` it assumed would overwrite.
+- `openhermes` -- no pills at all.
+
+`bifrost-parameters.json` keeps `nomic-embed-text:v1.5` (published `chat`, with
+`supports_function_calling` beside it), `granite-embedding:30m` and
+`qwen3:8b-q4_K_M`: the tags are where the mislabelling actually reaches a model
+somebody runs, and no bare `ollama/<family>` key exists in bifrost at all.
+
 Regenerate by fetching each source in `src/sources.ts` and keeping those keys
-(for crof, the slice around the `allModels` array).
+(for crof, the slice around the `allModels` array; for ollama, each family's
+`<a href="/library/NAME">` block plus enough of the page before the first one to
+keep the surrounding markup real).

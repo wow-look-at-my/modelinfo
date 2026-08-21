@@ -12,6 +12,7 @@ Numbers below are measured against the live documents, not estimated.
 | Source | Text | Records |
 |---|---|---|
 | openrouter | 0.6 MB | 413 |
+| ollama-library | 0.8 MB | 235 |
 | bifrost-datasheet | 1.6 MB | 3,930 |
 | bifrost-parameters | 18.1 MB | 9,934 |
 | litellm | 1.7 MB | 3,040 |
@@ -72,6 +73,14 @@ deletes its own rows.
 | objects, four sources at once | >128 (OOM) | — | >160 | — |
 | SQLite, verbatim records | 21.6 MB | 98.5 MB | 122.2 MB | 32.8 MB |
 | SQLite, repeated field held once | 20.0 MB | 62.0 MB | **82.0 MB** | **18.9 MB** |
+
+`ollama-library` was added after the table below was measured, and the table has
+NOT been re-taken against it — what exists is a paired A/B: the same build, over
+the same live documents, with and without the source. It cost about 6 MB of
+`heapUsed` and left `arrayBuffers` flat, on 0.8 MB of text and 235 small rows
+read as slices like everything else. That is a delta measured one way, not a row
+of the table: re-take the table properly before relying on an absolute.
+See `docs/ollama.md`.
 
 46 MB of headroom rather than 6. That margin is the point: WebAssembly memory
 only ever grows, so an isolate that runs one ingest keeps its high-water mark

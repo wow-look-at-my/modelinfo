@@ -18,6 +18,10 @@ The slice keeps, deliberately:
 - one live record of each mode the default filter hides.
 - litellm's `sample_spec`, which is its schema documentation checked into the
   model map. It is not a model.
+- `fallback_generalizations`, litellm's table of id-pattern routing rules, and
+  the copy of it bifrost-datasheet carries -- with a `base_model` added, so left
+  in it is a model named after a rule table that also claims an alias. Also not
+  a model.
 
 `crof.html` is different in shape, not in spirit: crof.ai has no public API, so
 the fixture is a real slice of the `https://crof.ai/pricing` HTML around the

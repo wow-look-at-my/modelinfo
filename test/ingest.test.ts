@@ -109,10 +109,28 @@ test("a value two models share is stored once", async () => {
 	assert.ok(Number(references) > Number(distinct), `${references} references, ${distinct} values`);
 });
 
-test("litellm's sample_spec is documentation, not a model", async () => {
+test("a source's own documentation and routing rules are not models", async () => {
 	const h = await harness();
 	const { bytes, sqlite } = await built(h);
+	// sample_spec is litellm's documentation of its own schema.
 	assert.deepEqual(rows(sqlite, bytes, "SELECT * FROM record WHERE source_key = 'sample_spec'"), []);
+	// fallback_generalizations is its table of id-pattern routing rules, and it
+	// reaches bifrost-datasheet too -- which adds a `base_model` to it, so left
+	// in it is a model named after a rule table that also claims an alias.
+	assert.deepEqual(
+		rows(sqlite, bytes, "SELECT * FROM record WHERE source_key = 'fallback_generalizations'"),
+		[],
+	);
+	assert.deepEqual(
+		rows(sqlite, bytes, "SELECT id FROM model WHERE id LIKE '%fallback_generalizations%'"),
+		[],
+	);
+	// And nothing answers to it, which a skipped record's base_model could
+	// otherwise still have claimed.
+	assert.deepEqual(
+		rows(sqlite, bytes, "SELECT name FROM alias WHERE name LIKE '%fallback%'"),
+		[],
+	);
 });
 
 test("a provider-prefixed twin stays a separate model", async () => {

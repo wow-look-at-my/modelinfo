@@ -106,7 +106,11 @@ export const SOURCES: Source[] = [
 		priority: 2,
 		envelope: "",
 		idField: "",
-		skip: [],
+		// fallback_generalizations is litellm's table of id-pattern routing rules,
+		// carried through into this copy. Its whole content is a `rules` array,
+		// and bifrost adds a `base_model` to it -- so left in, it is a model
+		// named after a rule table that also claims an alias.
+		skip: ["fallback_generalizations"],
 		htmlAnchor: "",
 		rateScale: 1,
 		rateFields: [],
@@ -130,9 +134,10 @@ export const SOURCES: Source[] = [
 		priority: 4,
 		envelope: "",
 		idField: "",
-		// sample_spec is litellm's documentation of its own schema, checked into
-		// the same map as if it were a model. It is not one.
-		skip: ["sample_spec"],
+		// Neither of these is a model. sample_spec is litellm's documentation of
+		// its own schema and fallback_generalizations is its table of id-pattern
+		// routing rules, both checked into the same map as if they were models.
+		skip: ["sample_spec", "fallback_generalizations"],
 		htmlAnchor: "",
 		rateScale: 1,
 		rateFields: [],

@@ -4,7 +4,7 @@ Notes for Claude working in this repository.
 
 ## What this is
 
-`modelinfo` — a Cloudflare Worker that merges five model catalogues into one and
+`modelinfo` — a Cloudflare Worker that merges six model catalogues into one and
 serves it at `modelinfo.pazer.ai`, so that no model shows a blank where its price
 should be. `/v1/models` is OpenAI's shape, `/db` is the ingest as a SQLite file.
 
@@ -20,7 +20,7 @@ npm run typecheck # src against workers-types, tests against node types
 npm run dev       # wrangler dev --local, hits the live upstreams
 ```
 
-Tests run against real slices of all five sources (`test/fixtures/`), because
+Tests run against real slices of all six sources (`test/fixtures/`), because
 every merge rule is about how independent sources disagree — two spellings of one
 model, a `base_model` nineteen priced variants share, a provider-prefixed twin
 that must not merge, a source whose prices are per million tokens. A hand-written
@@ -32,6 +32,11 @@ stub agrees with itself and proves none of it.
   slices and everything it returns still goes through `JSON.parse`. Changing it
   means re-running its agreement check against `JSON.parse` on the real
   documents, not just the fixtures.
+- **`ollama.ts` is the one source that is TRANSCRIBED, not sliced.** ollama.com
+  publishes no JSON, so its records are written from the listing page's
+  capability pills — the only source that knows which ollama models embed. It is
+  outside `split.ts` because every line of it interprets a value.
+  `docs/ollama.md`.
 - **`ingest.ts` writes the database; `catalogue.ts` reads it.** Neither ever
   holds the catalogue. If you find yourself building an array of models, stop.
 - **`service.ts` is the routes and takes its dependencies as arguments;
@@ -78,6 +83,13 @@ stub agrees with itself and proves none of it.
   wrong unit.
 - **A rate is a decimal string, and a negative is refused rather than clamped.**
   A wrong number in a money column is worse than a missing one.
+- **A source states only what its document says.** `ollama-library` is the
+  lowest-priority source on every `ollama/*` key, so the `chat` it once assumed
+  for a family with no pill beat litellm's stated `completion`. It writes `mode`
+  only where a pill states one; a reading goes in `ingest.ts`'s `modeFor`, where
+  nothing inherits it. An ollama TAG takes its FAMILY's stated mode — that is
+  what corrects the 37 embedding models bifrost publishes as `chat`.
+  `docs/ollama.md`.
 
 ## Gotchas that cost real time
 
@@ -103,6 +115,8 @@ stub agrees with itself and proves none of it.
 
 - `docs/memory.md` — the 128 MB problem, what failed, what the numbers are.
 - `docs/snapshot.md` — the R2 snapshot: the cold colo, freshness, the bucket.
+- `docs/ollama.md` — the transcribed source: the pills, family-to-tag mode, what
+  it corrected.
 
 This file is an index. If a change needs more than a few lines of explanation,
 write `docs/<topic>.md` and leave a pointer.

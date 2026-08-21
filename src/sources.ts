@@ -1,5 +1,5 @@
 /**
- * The five upstreams, and the order they win ties in.
+ * The six upstreams, and the order they win ties in.
  *
  * PRECEDENCE. The lowest priority owns a field; a later source fills gaps and
  * never overwrites. So this list is a ruling, not a convenience:
@@ -7,13 +7,16 @@
  *   0 openrouter          a live marketplace, and the only source publishing
  *                         cache-write rates per model alongside the parameters a
  *                         model actually accepts today.
- *   1 bifrost-datasheet   the litellm table plus `provider` and `base_model`.
- *   2 bifrost-parameters  the same table again, plus each model's parameter
+ *   1 ollama-library      ollama's own catalogue, and the only source that knows
+ *                         which of its models embed. It lists nothing else, so
+ *                         this rank governs `ollama/*` and no other key.
+ *   2 bifrost-datasheet   the litellm table plus `provider` and `base_model`.
+ *   3 bifrost-parameters  the same table again, plus each model's parameter
  *                         schema; it lists about 2.5x more keys than the
  *                         datasheet.
- *   3 litellm             upstream of the two above, and the fallback when
+ *   4 litellm             upstream of the two above, and the fallback when
  *                         either has not picked a change up yet.
- *   4 crof                a routing provider with no public API; its pricing page
+ *   5 crof                a routing provider with no public API; its pricing page
  *                         inlines an `allModels` array in HTML. It is the only
  *                         source publishing per-model `speed` (tok/s),
  *                         `cache_rate`, and `quantization`, and the only one
@@ -58,6 +61,14 @@ export interface Source {
 	 * `pricing`. Empty means every member of `pricing` is a rate (OpenRouter).
 	 */
 	rateFields: string[];
+	/**
+	 * The name of a bespoke transcriber for a source whose records are not JSON
+	 * anywhere in its document -- today only `ollama-library`, whose facts live
+	 * in server-rendered markup. Empty means the split path reads the document,
+	 * which is the case for every source that publishes JSON. See `ollama.ts`
+	 * for why this is not a `htmlAnchor` and cannot be.
+	 */
+	transcriber: string;
 }
 
 export const SOURCES: Source[] = [
@@ -71,10 +82,15 @@ export const SOURCES: Source[] = [
 		htmlAnchor: "",
 		rateScale: 1,
 		rateFields: [],
+		transcriber: "",
 	},
 	{
-		name: "bifrost-datasheet",
-		url: "https://getbifrost.ai/datasheet",
+		// ollama publishes no API for its library, and no other source knows
+		// which of its models embed: bifrost calls 6,308 of its 6,321 ollama
+		// keys `chat`. The listing page carries a capability pill per family,
+		// so it is read as markup -- see ollama.ts and docs/ollama.md.
+		name: "ollama-library",
+		url: "https://ollama.com/library",
 		priority: 1,
 		envelope: "",
 		idField: "",
@@ -82,30 +98,50 @@ export const SOURCES: Source[] = [
 		htmlAnchor: "",
 		rateScale: 1,
 		rateFields: [],
+		transcriber: "ollama-library",
+	},
+	{
+		name: "bifrost-datasheet",
+		url: "https://getbifrost.ai/datasheet",
+		priority: 2,
+		envelope: "",
+		idField: "",
+		// fallback_generalizations is litellm's table of id-pattern routing rules,
+		// carried through into this copy. Its whole content is a `rules` array,
+		// and bifrost adds a `base_model` to it -- so left in, it is a model
+		// named after a rule table that also claims an alias.
+		skip: ["fallback_generalizations"],
+		htmlAnchor: "",
+		rateScale: 1,
+		rateFields: [],
+		transcriber: "",
 	},
 	{
 		name: "bifrost-parameters",
 		url: "https://getbifrost.ai/datasheet/model-parameters",
-		priority: 2,
+		priority: 3,
 		envelope: "",
 		idField: "",
 		skip: [],
 		htmlAnchor: "",
 		rateScale: 1,
 		rateFields: [],
+		transcriber: "",
 	},
 	{
 		name: "litellm",
 		url: "https://raw.githubusercontent.com/BerriAI/litellm/refs/heads/main/model_prices_and_context_window.json",
-		priority: 3,
+		priority: 4,
 		envelope: "",
 		idField: "",
-		// sample_spec is litellm's documentation of its own schema, checked into
-		// the same map as if it were a model. It is not one.
-		skip: ["sample_spec"],
+		// Neither of these is a model. sample_spec is litellm's documentation of
+		// its own schema and fallback_generalizations is its table of id-pattern
+		// routing rules, both checked into the same map as if they were models.
+		skip: ["sample_spec", "fallback_generalizations"],
 		htmlAnchor: "",
 		rateScale: 1,
 		rateFields: [],
+		transcriber: "",
 	},
 	{
 		// crof.ai has no public API (`/pricing_api` answers 401); the only public
@@ -114,7 +150,7 @@ export const SOURCES: Source[] = [
 		// their bare keys and are mostly NEW catalogue entries rather than merges.
 		name: "crof",
 		url: "https://crof.ai/pricing",
-		priority: 4,
+		priority: 5,
 		envelope: "",
 		idField: "id",
 		skip: [],
@@ -125,6 +161,7 @@ export const SOURCES: Source[] = [
 		// crof's `pricing` object mixes rates with a `discount` and `*_original`
 		// fields; only these three are per-token rates.
 		rateFields: ["prompt", "completion", "cache_prompt"],
+		transcriber: "",
 	},
 ];
 

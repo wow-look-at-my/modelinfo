@@ -12,6 +12,10 @@ import { fixtureFile } from "./helpers.ts";
  */
 test("every fixture splits into exactly what JSON.parse sees", () => {
 	for (const source of SOURCES) {
+		// A transcribed source has no JSON to agree with -- see ollama.ts. Its own
+		// agreement check is that the records it writes are the page's facts, in
+		// ollama.test.ts.
+		if (source.transcriber) continue;
 		const text = fs.readFileSync(fixtureFile(source), "utf8");
 		let expected: [string, unknown][];
 		if (source.htmlAnchor) {

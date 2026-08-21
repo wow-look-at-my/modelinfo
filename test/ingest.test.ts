@@ -3,9 +3,8 @@ import fs from "node:fs";
 import test from "node:test";
 import { Catalogue } from "../src/catalogue.ts";
 import { parseFilter } from "../src/filter.ts";
-import { ingest } from "../src/ingest.ts";
+import { ingest, recordsOf } from "../src/ingest.ts";
 import { handle } from "../src/service.ts";
-import { splitTopLevel } from "../src/split.ts";
 import type { Sqlite, SqlValue } from "../src/sqlite.ts";
 import { SOURCES } from "../src/sources.ts";
 import { fixtureFile, fixtureFetcher, harness, type Harness } from "./helpers.ts";
@@ -73,12 +72,13 @@ test("record_full reconstructs every record exactly as its source published it",
 	let checked = 0;
 	for (const source of SOURCES) {
 		const text = fs.readFileSync(fixtureFile(source), "utf8");
-		// The shipped split path is the source of truth for what each source
-		// published: it handles JSON objects, enveloped arrays, and crof's
-		// HTML-embedded array, so this test compares against exactly what ingest
-		// stored rather than a hand-rolled reading of the fixture.
+		// The shipped reading path is the source of truth for what each source
+		// published: it handles JSON objects, enveloped arrays, crof's
+		// HTML-embedded array and ollama's transcribed markup, so this test
+		// compares against exactly what ingest stored rather than a hand-rolled
+		// reading of the fixture.
 		const published: [string, unknown][] = [];
-		for (const [key, raw] of splitTopLevel(text, source.envelope, source.htmlAnchor)) {
+		for (const [key, raw] of recordsOf(source, text)) {
 			const record = JSON.parse(raw) as Record<string, unknown>;
 			const id = source.envelope || source.htmlAnchor ? String(record[source.idField]) : key;
 			published.push([id, record]);
@@ -109,10 +109,28 @@ test("a value two models share is stored once", async () => {
 	assert.ok(Number(references) > Number(distinct), `${references} references, ${distinct} values`);
 });
 
-test("litellm's sample_spec is documentation, not a model", async () => {
+test("a source's own documentation and routing rules are not models", async () => {
 	const h = await harness();
 	const { bytes, sqlite } = await built(h);
+	// sample_spec is litellm's documentation of its own schema.
 	assert.deepEqual(rows(sqlite, bytes, "SELECT * FROM record WHERE source_key = 'sample_spec'"), []);
+	// fallback_generalizations is its table of id-pattern routing rules, and it
+	// reaches bifrost-datasheet too -- which adds a `base_model` to it, so left
+	// in it is a model named after a rule table that also claims an alias.
+	assert.deepEqual(
+		rows(sqlite, bytes, "SELECT * FROM record WHERE source_key = 'fallback_generalizations'"),
+		[],
+	);
+	assert.deepEqual(
+		rows(sqlite, bytes, "SELECT id FROM model WHERE id LIKE '%fallback_generalizations%'"),
+		[],
+	);
+	// And nothing answers to it, which a skipped record's base_model could
+	// otherwise still have claimed.
+	assert.deepEqual(
+		rows(sqlite, bytes, "SELECT name FROM alias WHERE name LIKE '%fallback%'"),
+		[],
+	);
 });
 
 test("a provider-prefixed twin stays a separate model", async () => {
@@ -211,7 +229,8 @@ test("a build with no usable source throws rather than serving an empty catalogu
 test("a source serving the wrong shape fails loudly", async () => {
 	const h = await harness({
 		fetcher: fixtureFetcher({
-			[SOURCES[3].url]: () => new Response("<html>rate limited</html>", { status: 200 }),
+			[SOURCES.find((s) => s.name === "litellm")!.url]: () =>
+				new Response("<html>rate limited</html>", { status: 200 }),
 		}),
 	});
 	const bytes = await ingest({
@@ -260,7 +279,7 @@ test("meta records what the build did, so /db explains itself", async () => {
 		assert.equal(meta.ttl_seconds, "3600");
 		assert.equal(
 			meta.source_order,
-			"openrouter,bifrost-datasheet,bifrost-parameters,litellm,crof",
+			"openrouter,ollama-library,bifrost-datasheet,bifrost-parameters,litellm,crof",
 		);
 		assert.equal(Number(meta.models), catalogue.total());
 		assert.ok(Number(meta.records) > Number(meta.models));
@@ -427,4 +446,110 @@ test("a build where every source fails, including crof, still throws", async () 
 			}),
 		/every source failed/,
 	);
+});
+
+// ollama.com/library is the sixth source, and the only one that knows which
+// ollama models embed: bifrost publishes `mode: "chat"` for 6,308 of its 6,321
+// ollama keys, embedding models included, and litellm's 29 ollama entries are
+// chat or completion. These tests drive the real ingest+fold path over a real
+// slice of the page (test/fixtures/ollama-library.html) and real bifrost
+// records for three ollama tags.
+
+function modeOfModel(sqlite: Sqlite, bytes: Uint8Array, id: string): string | null {
+	const found = rows(sqlite, bytes, `SELECT mode FROM model WHERE id = ${JSON.stringify(id)}`);
+	return found.length ? String(found[0][0]) : null;
+}
+
+test("an ollama family is published with the mode its own catalogue implies", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/nomic-embed-text"), "embedding");
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/granite-embedding"), "embedding");
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/qwen3"), "chat");
+	// The capabilities and sizes are the page's own pills, and nothing else in
+	// the catalogue publishes them.
+	const doc = rows(
+		sqlite,
+		bytes,
+		"SELECT doc FROM record_full WHERE source = 'ollama-library' AND source_key = 'qwen3'",
+	);
+	const record = JSON.parse(String(doc[0][0])) as Record<string, unknown>;
+	assert.deepEqual(record.capabilities, ["tools", "thinking"]);
+	assert.ok(Array.isArray(record.sizes) && record.sizes.includes("8b"));
+});
+
+test("an ollama TAG takes its family's mode, which is what fixes the models people run", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	// bifrost publishes this one as `chat`, with `supports_function_calling`
+	// beside it. It is nomic-embed-text at v1.5: it returns a vector.
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/nomic-embed-text:v1.5"), "embedding");
+	// The tag bifrost already had right stays right...
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/granite-embedding:30m"), "embedding");
+	// ...and a tag of a chat family is not dragged anywhere by the inheritance.
+	// The id is lowercased because every join key is: bifrost publishes this one
+	// as `qwen3:8b-q4_K_M`.
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/qwen3:8b-q4_k_m"), "chat");
+});
+
+test("a family the page states no mode for keeps the mode its own source stated", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	// ollama-library outranks every other source on an ollama key, so a `chat`
+	// it assumed would silently overwrite this. litellm says `completion` and
+	// means it: codellama is a base model you complete with, not converse with.
+	// Correcting the embedding models by flattening these would have traded one
+	// blanket label for another.
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/codellama"), "completion");
+	// A family nothing else lists at all is still something you run and talk to,
+	// and that reading is made where nothing can inherit it (ingest's modeFor).
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/openhermes"), "chat");
+});
+
+test("the corrected models are served, and the default view hides the embedding ones", async () => {
+	const h = await harness();
+	const { bytes } = await built(h);
+	const catalogue = new Catalogue(h.sqlite, bytes);
+	try {
+		const all = parseFilter(new URLSearchParams("mode=all&q=nomic-embed-text"));
+		assert.ok(!("error" in all));
+		assert.ok(catalogue.returned(all) >= 2, "the family and its tag are both in the catalogue");
+
+		// mode=embedding is how a caller asks for something to embed with, and
+		// before this source it answered with none of ollama's.
+		const embedding = parseFilter(new URLSearchParams("mode=embedding&provider=ollama"));
+		assert.ok(!("error" in embedding));
+		assert.ok(catalogue.returned(embedding) >= 4, "ollama's embedding models are findable as such");
+
+		const dflt = parseFilter(new URLSearchParams("q=nomic-embed-text"));
+		assert.ok(!("error" in dflt));
+		assert.equal(catalogue.returned(dflt), 0, "an embedding model is not something to chat with");
+	} finally {
+		catalogue.close();
+	}
+});
+
+test("a listing page that stops naming capabilities degrades loudly, and the rest still builds", async () => {
+	const page = fs.readFileSync(fixtureFile({ name: "ollama-library" }), "utf8");
+	const source = SOURCES.find((s) => s.name === "ollama-library")!;
+	const h = await harness({
+		fetcher: fixtureFetcher({
+			[source.url]: () =>
+				new Response(page.replaceAll("text-indigo-600", "text-violet-600"), {
+					status: 200,
+					headers: { "content-type": "text/html" },
+				}),
+		}),
+	});
+	const { bytes } = await built(h);
+	const catalogue = new Catalogue(h.sqlite, bytes);
+	try {
+		assert.deepEqual(catalogue.degraded(), ["ollama-library"]);
+		const report = catalogue.sources(h.now!(), 3600).find((s) => s.name === "ollama-library");
+		assert.match(String(report?.error), /pill/);
+		assert.equal(report?.models, 0);
+		assert.ok(catalogue.total() > 10, "the other sources still produce a catalogue");
+	} finally {
+		catalogue.close();
+	}
 });

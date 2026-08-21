@@ -62,6 +62,21 @@ export interface Source {
 	 */
 	rateFields: string[];
 	/**
+	 * What a model in this source's document IS, when no source states a mode
+	 * for it. Empty means the source publishes more than one kind of thing and
+	 * cannot answer for a record that says nothing.
+	 *
+	 * This is a fact about the DOCUMENT, not about any model in it. crof's page
+	 * is a chat-model price list, so every entry on it is a chat model whatever
+	 * it is called; ollama's library is a catalogue of models you run and talk
+	 * to, minus the ones its own pills mark otherwise. Reading a modality off a
+	 * model's NAME would be a guess -- this is the source telling you, once.
+	 *
+	 * A record with no stated mode and no source that can answer for it stays
+	 * `unknown`, which the default filter excludes and the response counts.
+	 */
+	defaultMode: string;
+	/**
 	 * The name of a bespoke transcriber for a source whose records are not JSON
 	 * anywhere in its document -- today only `ollama-library`, whose facts live
 	 * in server-rendered markup. Empty means the split path reads the document,
@@ -83,6 +98,7 @@ export const SOURCES: Source[] = [
 		rateScale: 1,
 		rateFields: [],
 		transcriber: "",
+		defaultMode: "",
 	},
 	{
 		// ollama publishes no API for its library, and no other source knows
@@ -99,6 +115,7 @@ export const SOURCES: Source[] = [
 		rateScale: 1,
 		rateFields: [],
 		transcriber: "ollama-library",
+		defaultMode: "chat",
 	},
 	{
 		name: "bifrost-datasheet",
@@ -115,6 +132,7 @@ export const SOURCES: Source[] = [
 		rateScale: 1,
 		rateFields: [],
 		transcriber: "",
+		defaultMode: "",
 	},
 	{
 		name: "bifrost-parameters",
@@ -127,6 +145,7 @@ export const SOURCES: Source[] = [
 		rateScale: 1,
 		rateFields: [],
 		transcriber: "",
+		defaultMode: "",
 	},
 	{
 		name: "litellm",
@@ -142,6 +161,7 @@ export const SOURCES: Source[] = [
 		rateScale: 1,
 		rateFields: [],
 		transcriber: "",
+		defaultMode: "",
 	},
 	{
 		// crof.ai has no public API (`/pricing_api` answers 401); the only public
@@ -162,8 +182,29 @@ export const SOURCES: Source[] = [
 		// fields; only these three are per-token rates.
 		rateFields: ["prompt", "completion", "cache_prompt"],
 		transcriber: "",
+		defaultMode: "chat",
 	},
 ];
+
+/**
+ * defaultModeOf answers for a model no source gave a mode, from the sources that
+ * DID contribute to it, best-ranked first.
+ *
+ * `sources` arrives in merge order (foldRecords appends as it folds), so the
+ * first source that can answer is the one whose document ranks highest -- the
+ * same precedence every other field follows.
+ */
+export function defaultModeOf(sources: readonly string[]): string {
+	for (const name of sources) {
+		const mode = DEFAULT_MODE_BY_NAME.get(name);
+		if (mode) return mode;
+	}
+	return "";
+}
+
+const DEFAULT_MODE_BY_NAME = new Map<string, string>(
+	SOURCES.filter((s) => s.defaultMode).map((s) => [s.name, s.defaultMode]),
+);
 
 /** Merge order, by name. */
 export const SOURCE_ORDER: string[] = [...SOURCES]

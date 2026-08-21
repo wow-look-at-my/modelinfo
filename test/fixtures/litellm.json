@@ -442,5 +442,14 @@
 		"supports_vision": true,
 		"supports_web_search": true,
 		"vector_store_cost_per_gb_per_day": 0
+	},
+	"ollama/codellama": {
+		"input_cost_per_token": 0,
+		"litellm_provider": "ollama",
+		"max_input_tokens": 4096,
+		"max_output_tokens": 4096,
+		"max_tokens": 4096,
+		"mode": "completion",
+		"output_cost_per_token": 0
 	}
 }

@@ -1,10 +1,12 @@
 import { swrFetch, type SWRStore } from "./cache.ts";
 import { modeOf } from "./filter.ts";
 import { bareName, foldRecords, joinKey, lower, type Row } from "./merge.ts";
+import { familyOf, ollamaLibraryRecords, statedMode } from "./ollama.ts";
 import { SCHEMA } from "./schema.ts";
 import { SOURCES, type Source } from "./sources.ts";
 import { extractLargest, splitTopLevel } from "./split.ts";
 import type { Database, Sqlite } from "./sqlite.ts";
+import type { Model } from "./types.ts";
 
 /** One hour, for the sources, the database and the answers alike. */
 export const TTL_SECONDS = 3600;
@@ -112,7 +114,7 @@ function insertRecords(db: Database, source: Source, body: string): number {
 	let n = 0;
 	db.run("BEGIN");
 	try {
-		for (const [key, raw] of splitTopLevel(body, source.envelope, source.htmlAnchor)) {
+		for (const [key, raw] of recordsOf(source, body)) {
 			if (skip.has(key)) continue;
 			// The ONLY parse in the ingest path, and its subject is one ~2 KB record
 			// rather than an 18 MB document.
@@ -162,6 +164,23 @@ function insertRecords(db: Database, source: Source, body: string): number {
 }
 
 /**
+ * recordsOf yields a source's records as `key -> raw record text`.
+ *
+ * Almost every source publishes JSON, and `splitTopLevel` hands back the
+ * source's own bytes. `ollama-library` publishes markup and no JSON at all, so
+ * its records are TRANSCRIBED rather than sliced -- the one place `record.doc`
+ * is not an upstream's own bytes, because there are none. The exception is named
+ * here, at the seam, rather than hidden inside the split path: see `ollama.ts`.
+ */
+export function recordsOf(source: Source, body: string): Generator<[string, string]> {
+	if (source.transcriber === "ollama-library") return ollamaLibraryRecords(body);
+	return splitTopLevel(body, source.envelope, source.htmlAnchor);
+}
+
+/** The source whose family records settle the mode of every tag under them. */
+const OLLAMA_LIBRARY = "ollama-library";
+
+/**
  * identify fills the `model` and `alias` tables in one ordered pass over
  * `record`, folding each model, recording what a query needs to find it, and
  * dropping the folded value.
@@ -178,6 +197,10 @@ function identify(db: Database): void {
 	// rather than resolved. See registerAliases.
 	const claims = [new Map<string, string>(), new Map<string, string>()];
 	const contested = [new Set<string>(), new Set<string>()];
+	// One entry per ollama family, filled as the pass reaches it. See modeFor:
+	// this is the whole catalogue-shaped thing identify holds, and the library
+	// page lists 235 families, so it is about 10 KB rather than a catalogue.
+	const families = new Map<string, string>();
 
 	try {
 		db.run("BEGIN");
@@ -188,7 +211,7 @@ function identify(db: Database): void {
 			insert.run([
 				model.id,
 				lower(String(model.owned_by ?? "")),
-				modeOf(model),
+				modeFor(model, families),
 				model.created,
 				model.sources.join(","),
 				Object.keys(model.pricing).length,
@@ -215,6 +238,44 @@ function identify(db: Database): void {
 		insert.free();
 	}
 	registerAliases(db, claims, contested);
+}
+
+/**
+ * modeFor is `modeOf`, plus the one thing modeOf cannot see: an ollama TAG's
+ * mode is its FAMILY's.
+ *
+ * `ollama/nomic-embed-text:v1.5` is a quantization of `nomic-embed-text`, and a
+ * quantization does not change what a model does. But the tag has no page on
+ * ollama.com and no record of its own in any source that knows -- bifrost, the
+ * only source listing it, calls it `chat`, as it calls 6,308 of its 6,321
+ * ollama keys. So the family answers for it. Without this the fix reaches the
+ * 235 family records and none of the 42 tagged embedding rows people actually
+ * run.
+ *
+ * Only a mode the library page STATES is inherited -- `statedMode` reads the
+ * family's own capability pills, not the mode it ended up with. Inheriting the
+ * latter would push a `chat` this service assumed onto tags whose own source
+ * said `completion`, which is the blanket labelling this change exists to undo.
+ *
+ * The families map is filled by this same pass, which is safe because
+ * `ollama/x` is a proper prefix of `ollama/x:tag` and the cursor is ordered by
+ * join_key: a family is always folded before any tag under it.
+ *
+ * The last clause is the other half of stating little: a family the page lists
+ * and no source gives a mode is `chat`, because ollama's library is a catalogue
+ * of models you run and talk to. That is a reading, so it is made HERE, where
+ * nothing else can inherit it, and only for a record the page contributed.
+ */
+function modeFor(model: Model, families: Map<string, string>): string {
+	const mode = modeOf(model);
+	if (!model.id.startsWith("ollama/")) return mode;
+	const family = familyOf(model.id);
+	if (family !== null) return families.get(family) ?? mode;
+
+	const stated = statedMode(model.capabilities);
+	if (stated) families.set(model.id, stated);
+	if (mode !== "unknown") return mode;
+	return model.sources.includes(OLLAMA_LIBRARY) ? "chat" : mode;
 }
 
 function claimNames(

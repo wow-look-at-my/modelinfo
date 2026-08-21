@@ -512,6 +512,37 @@ test("a source whose whole document is one kind of thing answers for a record th
 	}
 });
 
+test("a model whose own record gives it a vector size is served as an embedding model", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	// `output_vector_size` is the one field in these documents that settles a
+	// modality outright: nothing but an embedding model has one, and across the
+	// live litellm, bifrost-datasheet and bifrost-parameters documents all 181
+	// records carrying it say `embedding` -- no exceptions in either direction.
+	// So a model served as anything else while one of its own records gives it a
+	// vector size means the fold let a wrong label from a higher-priority source
+	// beat an unambiguous fact. That is the ollama bug's shape, and this is where
+	// it would show up next.
+	const contradicted = rows(
+		sqlite,
+		bytes,
+		`SELECT m.id, m.mode
+		 FROM model m JOIN record_full r ON r.join_key = m.id
+		 WHERE m.mode <> 'embedding'
+		 GROUP BY m.id
+		 HAVING MAX(json_extract(r.doc, '$.output_vector_size')) IS NOT NULL`,
+	);
+	assert.deepEqual(contradicted, [], "a vector size and a non-embedding mode cannot both be right");
+
+	// And the check is not vacuous: the fixtures do carry such records.
+	const withVector = rows(
+		sqlite,
+		bytes,
+		"SELECT COUNT(DISTINCT join_key) FROM record_full WHERE json_extract(doc, '$.output_vector_size') IS NOT NULL",
+	);
+	assert.ok(Number(withVector[0][0]) > 0, "no fixture record carries a vector size");
+});
+
 test("a stated mode still outranks what a source says its document is", async () => {
 	const h = await harness();
 	const { bytes, sqlite } = await built(h);

@@ -3,7 +3,7 @@ import { modeOf } from "./filter.ts";
 import { bareName, foldRecords, joinKey, lower, type Row } from "./merge.ts";
 import { familyOf, ollamaLibraryRecords, statedMode } from "./ollama.ts";
 import { SCHEMA } from "./schema.ts";
-import { SOURCES, type Source } from "./sources.ts";
+import { defaultModeOf, SOURCES, type Source } from "./sources.ts";
 import { extractLargest, splitTopLevel } from "./split.ts";
 import type { Database, Sqlite } from "./sqlite.ts";
 import type { Model } from "./types.ts";
@@ -177,9 +177,6 @@ export function recordsOf(source: Source, body: string): Generator<[string, stri
 	return splitTopLevel(body, source.envelope, source.htmlAnchor);
 }
 
-/** The source whose family records settle the mode of every tag under them. */
-const OLLAMA_LIBRARY = "ollama-library";
-
 /**
  * identify fills the `model` and `alias` tables in one ordered pass over
  * `record`, folding each model, recording what a query needs to find it, and
@@ -261,21 +258,26 @@ function identify(db: Database): void {
  * `ollama/x` is a proper prefix of `ollama/x:tag` and the cursor is ordered by
  * join_key: a family is always folded before any tag under it.
  *
- * The last clause is the other half of stating little: a family the page lists
- * and no source gives a mode is `chat`, because ollama's library is a catalogue
- * of models you run and talk to. That is a reading, so it is made HERE, where
- * nothing else can inherit it, and only for a record the page contributed.
+ * A model no source gave a mode at all falls to `defaultModeOf`: what a SOURCE
+ * says its whole document is, which is a fact about the document rather than a
+ * reading of any model's name. That is what stops crof's 21 chat models and
+ * ollama's pill-less families being served as `unknown` and hidden by the
+ * default filter. A model no source can answer for stays `unknown`.
  */
 function modeFor(model: Model, families: Map<string, string>): string {
 	const mode = modeOf(model);
-	if (!model.id.startsWith("ollama/")) return mode;
-	const family = familyOf(model.id);
-	if (family !== null) return families.get(family) ?? mode;
+	if (model.id.startsWith("ollama/")) {
+		const family = familyOf(model.id);
+		if (family !== null) return families.get(family) ?? modeOrDefault(model, mode);
+		const stated = statedMode(model.capabilities);
+		if (stated) families.set(model.id, stated);
+	}
+	return modeOrDefault(model, mode);
+}
 
-	const stated = statedMode(model.capabilities);
-	if (stated) families.set(model.id, stated);
+function modeOrDefault(model: Model, mode: string): string {
 	if (mode !== "unknown") return mode;
-	return model.sources.includes(OLLAMA_LIBRARY) ? "chat" : mode;
+	return defaultModeOf(model.sources) || mode;
 }
 
 function claimNames(

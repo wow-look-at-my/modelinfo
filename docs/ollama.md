@@ -100,15 +100,34 @@ of the eight ollama base models, and the first live build did exactly that --
 `completion` fell from 8 to 2. One blanket label traded for another.
 
 So the record carries `mode` only for a family the page marks `embedding`. A
-family the page lists that no source gives a mode to is read as `chat` in
-`ingest.ts`'s `modeFor`, where nothing can inherit it. The reading is the same
-one `modeOf` already makes of OpenRouter: this is a catalogue of models you run
-and talk to, and `tools`, `thinking`, `vision` and `audio` are all ways of
-talking to one.
+family the page lists that no source gives a mode to falls to the source's
+`defaultMode` (`chat`), which fills a gap and never overwrites a stated mode --
+see "What a source can answer for" below.
 
 A pill naming a modality that is not a conversation -- a rerank, say -- has to
 be added to `MODES` in `ollama.ts`. Nothing detects one on its own. That is the
 price of only ever asserting what the page prints.
+
+## What a source can answer for
+
+`Source.defaultMode` is what a whole DOCUMENT is, for a record no source gave a
+mode. It is not an inference about any model in it, and nothing anywhere reads a
+model's name to decide a modality: `kimi-k3` is a chat model because crof's
+pricing page is a chat-model price list, not because of what it is called.
+
+Two sources declare one. crof's `allModels` array carries no `mode` field on any
+of its 21 entries, so before this every crof model was served as `unknown` and
+hidden by the default filter. ollama's library is a catalogue of models you run
+and talk to, minus the ones its own pills mark otherwise. The rest declare
+nothing, because they publish image, audio, rerank and embedding models beside
+chat ones and genuinely cannot answer for a record that says nothing.
+
+It is the LAST thing consulted. A mode any source stated wins, which is what
+keeps `ollama/codellama` on litellm's `completion`; and a record no source can
+answer for stays `unknown`, which the default filter excludes and the response
+counts. That is still 21 models on the live documents: thirteen one-field
+fragments bifrost-parameters publishes with no provider and no mode, and eight
+fireworks pricing tiers.
 
 ## A tag asks its family
 
@@ -159,6 +178,9 @@ Built against the live documents on 2026-08-21, with and without the source:
 |---|---|---|---|---|
 | before | 12,204 | 6,308 | 8 | 5 |
 | after | 12,429 | 6,484 | 8 | **54** |
+
+Separately, `defaultMode` took the catalogue's `unknown` models from 43 to 21:
+crof's 19 are chat models again rather than models the default view hides.
 
 The 54 are the 12 family records plus the 42 tags under them. Forty-nine of them
 were not findable as embedding models before; 37 of those are tags that were

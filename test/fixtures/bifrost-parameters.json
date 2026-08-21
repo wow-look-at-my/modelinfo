@@ -3780,5 +3780,8 @@
 		"supports_function_calling": true,
 		"supports_tool_choice": true,
 		"source": "merged_from_llm_models_csv"
+	},
+	"claude-opus-4-7-20260416": {
+		"deprecation_date": "2027-04-16"
 	}
 }

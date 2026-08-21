@@ -83,6 +83,11 @@ stub agrees with itself and proves none of it.
   wrong unit.
 - **A rate is a decimal string, and a negative is refused rather than clamped.**
   A wrong number in a money column is worse than a missing one.
+- **A source can answer for a record that states no mode; a NAME never can.**
+  `Source.defaultMode` is what a whole document IS — crof's page is a chat-model
+  price list, so `kimi-k3` is a chat model because of where it was published,
+  not because of what it is called. It fills a gap and never overwrites a stated
+  mode; a record no source can answer for stays `unknown`.
 - **A source states only what its document says.** `ollama-library` is the
   lowest-priority source on every `ollama/*` key, so the `chat` it once assumed
   for a family with no pill beat litellm's stated `completion`. It writes `mode`
@@ -115,8 +120,8 @@ stub agrees with itself and proves none of it.
 
 - `docs/memory.md` — the 128 MB problem, what failed, what the numbers are.
 - `docs/snapshot.md` — the R2 snapshot: the cold colo, freshness, the bucket.
-- `docs/ollama.md` — the transcribed source: the pills, family-to-tag mode, what
-  it corrected.
+- `docs/ollama.md` — the transcribed source: the pills, family-to-tag mode,
+  `Source.defaultMode`, and what it corrected.
 
 This file is an index. If a change needs more than a few lines of explanation,
 write `docs/<topic>.md` and leave a pointer.

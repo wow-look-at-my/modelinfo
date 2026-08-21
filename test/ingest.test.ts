@@ -492,6 +492,44 @@ test("an ollama TAG takes its family's mode, which is what fixes the models peop
 	assert.equal(modeOfModel(sqlite, bytes, "ollama/qwen3:8b-q4_k_m"), "chat");
 });
 
+test("a source whose whole document is one kind of thing answers for a record that says nothing", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	// crof publishes no `mode` on any of its 21 entries, so before this its
+	// models were served as `unknown` -- which the default filter hides. Its
+	// page is a chat-model price list: that is a fact about the DOCUMENT, and it
+	// settles every entry on it without anything reading a model's NAME.
+	assert.equal(modeOfModel(sqlite, bytes, "deepseek-v4-pro-0813"), "chat");
+	assert.equal(modeOfModel(sqlite, bytes, "glm-5.2"), "chat");
+
+	const catalogue = new Catalogue(h.sqlite, bytes);
+	try {
+		const dflt = parseFilter(new URLSearchParams("q=glm-5.2"));
+		assert.ok(!("error" in dflt));
+		assert.ok(catalogue.returned(dflt) > 0, "and the default view now shows them");
+	} finally {
+		catalogue.close();
+	}
+});
+
+test("a stated mode still outranks what a source says its document is", async () => {
+	const h = await harness();
+	const { bytes, sqlite } = await built(h);
+	// The default answers for a record NOTHING gave a mode. It must never
+	// overwrite one: ollama-library says `chat`, and codellama is a base model
+	// litellm states `completion` for.
+	assert.equal(modeOfModel(sqlite, bytes, "ollama/codellama"), "completion");
+	// And a source that publishes many kinds of thing cannot answer at all, so a
+	// record with no mode from one of those stays `unknown` rather than becoming
+	// something plausible.
+	const unknown = rows(
+		sqlite,
+		bytes,
+		"SELECT id FROM model WHERE mode = 'unknown' AND sources NOT LIKE '%crof%'",
+	);
+	assert.ok(unknown.length > 0, "unknown is still reachable, and still means unknown");
+});
+
 test("a family the page states no mode for keeps the mode its own source stated", async () => {
 	const h = await harness();
 	const { bytes, sqlite } = await built(h);
